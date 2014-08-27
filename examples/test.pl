@@ -21,6 +21,10 @@ my $pubnub = PubNub::PubSub->new(
     }
 );
 
-$pubnub->send('message1', 'message2');
+my @messages;
+foreach (1 .. 50) {
+    push @messages, "message" . int(rand(10000));
+}
+$pubnub->send(@messages);
 
 1;
