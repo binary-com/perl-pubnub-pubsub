@@ -30,7 +30,6 @@ sub new {
     return $self;
 }
 
-## code are copied from Hijk with changes
 sub send {
     my $self = shift;
     my @msg = @_;
