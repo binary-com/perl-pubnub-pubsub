@@ -1,26 +1,5 @@
-# NAME
+This is a Perl library for rapid publishing of messages on PubNub.com.
 
-PubNub::PubSub - Blah blah blah
+Please see https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining
 
-# SYNOPSIS
-
-    use PubNub::PubSub;
-
-# DESCRIPTION
-
-PubNub::PubSub is
-
-# AUTHOR
-
-Fayland Lam <fayland@gmail.com>
-
-# COPYRIGHT
-
-Copyright 2014- Fayland Lam
-
-# LICENSE
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
-
-# SEE ALSO
+and https://gist.github.com/stephenlb/0c5032846f4d31ab7160
