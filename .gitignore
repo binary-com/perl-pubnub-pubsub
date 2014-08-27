@@ -1,0 +1,7 @@
+/PubNub-PubSub-*
+/.build
+/_build*
+/Build
+MYMETA.*
+!META.json
+/.prove
