@@ -19,13 +19,23 @@ sub new {
     $args{port} ||= 80;
     $args{timeout} ||= 60;
 
-    return bless \%args, $class;
+    my $self = bless \%args, $class;
+    unless ($self->{callback}) {
+        $self->{callback} = sub {
+            my $res = shift;
+            push @{ $self->{__res} }, $res;
+        };
+    }
+
+    return $self;
 }
 
 ## code are copied from Hijk with changes
 sub send {
     my $self = shift;
     my @msg = @_;
+
+    $self->{__res} = [];
 
     my @lines;
     foreach my $msg (@msg) {
@@ -35,8 +45,6 @@ sub send {
     }
     my $r = join("\r\n", @lines) . "\r\n";
 
-    my @res;
-
     my $id; $id = Mojo::IOLoop->client({address => 'pubsub.pubnub.com', port => 80} => sub {
         my ($loop, $err, $stream) = @_;
 
@@ -44,9 +52,9 @@ sub send {
             my ($stream, $bytes) = @_;
 
             ## parse bytes
-            push @res, $bytes;
+            $self->{callback}->($bytes, shift @msg);
 
-            Mojo::IOLoop->remove($id) if scalar(@res) == scalar(@msg); # an end
+            Mojo::IOLoop->remove($id) unless @msg;
         });
 
         # Write request
@@ -55,7 +63,7 @@ sub send {
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 
-    return @res;
+    return @{ $self->{__res} };
 }
 
 1;

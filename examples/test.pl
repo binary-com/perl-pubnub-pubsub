@@ -11,10 +11,16 @@ my $pubnub = PubNub::PubSub->new(
     pub_key => 'pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258',
     sub_key => 'sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe',
     channel => 'HyperLogLogDemo1',
+    callback => sub {
+        my ($res, $req) = @_;
+        print "=" x 20 . "\n";
+        print "REQ: $req" . "\n";
+        print "=" x 20 . "\n";
+        print "RES: $res" . "\n";
+        print "=" x 20 . "\n";
+    }
 );
 
-my @args = $pubnub->send('message1', 'message2');
-use Data::Dumper;
-print Dumper(\@args);
+$pubnub->send('message1', 'message2');
 
 1;
