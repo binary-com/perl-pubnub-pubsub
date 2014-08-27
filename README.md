@@ -1,5 +1,5 @@
-perl-pubnub-pubsub
-==================
+PubNub::PubSub
+==============
 
 This is a Perl library for rapid publishing of messages on PubNub.com.
 
