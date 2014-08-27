@@ -35,20 +35,22 @@ sub send {
     }
     my $r = join("\r\n", @lines) . "\r\n";
 
-    # $r = qq~GET /publish/pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258/sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe/0/HyperLogLogDemo1/0/"message1" HTTP/1.1\r\nHost: pubsub.pubnub.com\r\n\r\nGET /publish/pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258/sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe/0/HyperLogLogDemo1/0/"message2" HTTP/1.1\r\nHost: pubsub.pubnub.com\r\n\r\n~;
-
     my @res;
 
-    my $id = Mojo::IOLoop->client({address => 'pubsub.pubnub.com', port => 80} => sub {
-      my ($loop, $err, $stream) = @_;
+    my $id; $id = Mojo::IOLoop->client({address => 'pubsub.pubnub.com', port => 80} => sub {
+        my ($loop, $err, $stream) = @_;
 
-      $stream->on(read => sub {
-        my ($stream, $bytes) = @_;
-        push @res, $bytes;
-      });
+        $stream->on(read => sub {
+            my ($stream, $bytes) = @_;
 
-      # Write request
-      $stream->write($r);
+            ## parse bytes
+            push @res, $bytes;
+
+            Mojo::IOLoop->remove($id) if scalar(@res) == scalar(@msg); # an end
+        });
+
+        # Write request
+        $stream->write($r);
     });
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
