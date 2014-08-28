@@ -44,7 +44,10 @@ sub send {
     }
     my $r = join("\r\n", @lines) . "\r\n";
 
-    my $id; $id = Mojo::IOLoop->client({address => 'pubsub.pubnub.com', port => 80} => sub {
+    my $id; $id = Mojo::IOLoop->client({
+        address => $self->{host},
+        port => $self->{port}
+    } => sub {
         my ($loop, $err, $stream) = @_;
 
         $stream->on(read => sub {
