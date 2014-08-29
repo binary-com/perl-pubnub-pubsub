@@ -6,6 +6,8 @@ our $VERSION = '0.01';
 
 use Carp;
 use Mojo::IOLoop;
+use Socket qw/$CRLF/;
+use Mojo::JSON qw/decode_json/;
 
 sub new {
     my $class = shift;
@@ -96,20 +98,54 @@ sub subscribe {
         $stream->on(read => sub {
             my ($stream, $bytes) = @_;
 
-            print STDERR "-- $bytes --\n\n";
+            my %data = $self->parse_response($bytes);
+            if ($data{json}) {
+                $timetoken = $data{json}->[1];
+            }
 
             ## parse bytes
-            # $callback->($bytes, shift @msg);
+            $callback->($data{json}->[0], \%data);
 
+            # print STDERR __r($timetoken) . "---\n";
             $stream->write(__r($timetoken)); # never end loop
         });
 
         # Write request
-        print STDERR __r($timetoken) . "---\n";
+        # print STDERR __r($timetoken) . "---\n";
         $stream->write(__r($timetoken));
     });
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
+}
+
+sub parse_response {
+    my ($self, $resp) = @_;
+
+    my $neck_pos = index($resp, "${CRLF}${CRLF}");
+    my $body = substr($resp, $neck_pos+4);
+    my $head = substr($resp, 0, $neck_pos);
+
+    my $proto = substr($head, 0, 8);
+    my $status_code = substr($head, 9, 3);
+    substr($head, 0, index($head, $CRLF) + 2, ""); # 2 = length($CRLF)
+
+    my $header;
+    for (split /${CRLF}/o, $head) {
+        my ($key, $value) = split /: /, $_, 2;
+        $header->{$key} = $value;
+    }
+
+    my %data = (
+        proto => $proto,
+        code  => $status_code,
+        header => $header,
+        body   => $body,
+    );
+    if ($data{header}->{'Content-Type'} =~ 'javascript') {
+        $data{json} = decode_json($body);
+    }
+
+    return wantarray ? %data : \%data;
 }
 
 1;
