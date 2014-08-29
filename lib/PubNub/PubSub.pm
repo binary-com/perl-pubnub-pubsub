@@ -6,7 +6,6 @@ our $VERSION = '0.01';
 
 use Carp;
 use Mojo::IOLoop;
-use Mojo::UserAgent;
 
 sub new {
     my $class = shift;
@@ -76,46 +75,41 @@ sub subscribe {
     $channel or croak "channel is required.";
 
     my $callback = $params{callback} or croak "callback is required.";
-
     my $timetoken = $params{timetoken} || '0';
 
-    my $ua = $self->{ua};
-    unless ($ua) {
-        $ua = Mojo::UserAgent->new;
-        $ua->max_redirects(3);
-        $ua->inactivity_timeout(120);
-        $ua->proxy->http($self->{proxy}) if $self->{proxy};
-        $self->{ua} = $ua;
+    sub __r {
+        my ($timetoken) = @_;
+
+        return join("\r\n",
+            'GET /subscribe/' . $self->{'sub_key'} . '/' . $channel . '/0/' . $timetoken . ' HTTP/1.1',
+            'Host: pubsub.pubnub.com',
+            ''
+        ) . "\r\n";
     }
 
-    # build URL from params
-    my $url = 'http://' . $self->{host} .
-        '/subscribe' .
-        '/' . $self->{'sub_key'} .
-        '/' . $channel .
-        '/0' .                  # TODO callback
-        '/' . $timetoken;
-    my $tx = $ua->get($url);
-    unless ($tx->success) {
-        print Dumper(\$tx); use Data::Dumper;
-        return $tx->error;
-    }
+    my $id; $id = Mojo::IOLoop->client({
+        address => $self->{host},
+        port => $self->{port}
+    } => sub {
+        my ($loop, $err, $stream) = @_;
 
-    my $data = $tx->res->json;
-    print Dumper(\$data); use Data::Dumper;
+        $stream->on(read => sub {
+            my ($stream, $bytes) = @_;
 
-    my $messages = $data->[0];
-    $params{timetoken} = $data->[1];
+            print STDERR "-- $bytes --\n\n";
 
-    if (! $messages) {
-        return $self->subscribe(%params);
-    }
+            ## parse bytes
+            # $callback->($bytes, shift @msg);
 
-    foreach my $msg (@$messages) {
-        return if ! $callback->($msg);
-    }
+            $stream->write(__r($timetoken)); # never end loop
+        });
 
-    return $self->subscribe(%params);
+        # Write request
+        print STDERR __r($timetoken) . "---\n";
+        $stream->write(__r($timetoken));
+    });
+
+    Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 }
 
 1;
