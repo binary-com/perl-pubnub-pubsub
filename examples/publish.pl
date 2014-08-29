@@ -41,7 +41,6 @@ $pubnub->publish({
     }
 });
 
-print "Total got $got_message VS $total_message\n";
 my $duration = time() - $start_time;
 print "Spent $duration.\n";
 
