@@ -55,9 +55,6 @@ sub publish {
 
             ## parse bytes
             $callback->($bytes);
-
-            shift @msg;
-            Mojo::IOLoop->remove($id) unless @msg;
         });
 
         # Write request
@@ -253,11 +250,13 @@ publish messages to channel
         callback => sub {
             my ($res) = @_;
 
-            # ...
+            # ... $res is raw HTTP Response (in bulk)
         }
     });
 
-all B<messages> will be sent in one socket request. B<callback> could be dummy since there is no special order for that.
+all B<messages> will be sent in one socket request.
+
+B<callback> will get all original response text which means it may have two or more response text in one read. it's not that useful at all.
 
 =head1 AUTHOR
 
