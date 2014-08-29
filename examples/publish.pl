@@ -8,14 +8,14 @@ use PubNub::PubSub;
 use Time::HiRes qw/time/;
 
 srand();
-my $total_message = 50000 + int(rand(50000));
+my $total_message = 10; # 50000 + int(rand(50000));
 
 #  s.send('GET /publish/pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258/sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe/0/HyperLogLogDemo1/0/"'+str(id[random.randrange(0, numID-1)])+'" HTTP/1.1\r\nHost: pubsub.pubnub.com\r\n\r\n')
 my $got_message = 0;
 my $start_time = time();
 my $pubnub = PubNub::PubSub->new(
-    pub_key => 'pub-c-5b5d836f-143b-48d2-882f-659e87b6c321',
-    sub_key => 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
+    pub_key => 'demo',
+    sub_key => 'demo',
 );
 
 print "Total sending $total_message\n";
@@ -25,7 +25,7 @@ foreach (1 .. $total_message) {
 }
 $pubnub->publish({
     messages => \@messages,
-    channel => 'sandbox',
+    channel => 'some_unique_channel_perhaps',
     callback => sub {
         my ($res, $req) = @_;
 

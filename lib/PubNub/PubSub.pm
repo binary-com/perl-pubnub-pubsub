@@ -41,7 +41,7 @@ sub publish {
     # build request
     my @lines;
     foreach my $msg (@msg) {
-        push @lines, "GET /publish/" . $self->{pub_key} . '/' . $self->{sub_key} . '/0/' . $self->{channel} . '/0/"' . $msg . '" HTTP/1.1';
+        push @lines, "GET /publish/" . $self->{pub_key} . '/' . $self->{sub_key} . '/0/' . $channel . '/0/"' . $msg . '" HTTP/1.1';
         push @lines, 'Host: pubsub.pubnub.com';
         push @lines, ''; # for \r\n
     }
@@ -91,9 +91,12 @@ sub subscribe {
 
     my $id; $id = Mojo::IOLoop->client({
         address => $self->{host},
-        port => $self->{port}
+        port => $self->{port},
+        timeout => 90000,
     } => sub {
         my ($loop, $err, $stream) = @_;
+
+        print Dumper(\$err); use Data::Dumper;
 
         $stream->on(read => sub {
             my ($stream, $bytes) = @_;

@@ -11,18 +11,18 @@ use Data::Dumper;
 my $got_message = 0;
 my $start_time = time();
 my $pubnub = PubNub::PubSub->new(
-    pub_key => 'pub-c-5b5d836f-143b-48d2-882f-659e87b6c321',
-    sub_key => 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
+    pub_key => 'demo',
+    sub_key => 'demo',
 );
 
 $pubnub->subscribe({
-    channel => 'sandbox',
+    channel => 'some_unique_channel_perhaps',
     callback => sub {
-        my ($res, $req) = @_;
-
-        print Dumper(\@_);
-
-        return 1;
+        my ($msgs, $data) = @_;
+        foreach my $msg (@$msgs) {
+            print "# Got message: $msg\n";
+        }
+        return 1; # 1 to continue, 0 to stop
     }
 });
 
