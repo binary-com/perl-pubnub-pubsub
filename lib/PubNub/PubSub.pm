@@ -203,6 +203,16 @@ PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com ba
 
 perl clone of L<https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining>
 
+For a rough test:
+
+=over 4
+
+=item * run perl examples/subscribe.pl in one terminal (or luanch may terminals with subscribe.pl)
+
+=item * run perl examples/publish.pl in another terminal (you'll see all subscribe terminals will get messages.)
+
+=back
+
 =head1 METHOD
 
 =head2 new

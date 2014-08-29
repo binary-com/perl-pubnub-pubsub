@@ -22,7 +22,7 @@ $pubnub->subscribe({
         my $should_we_stop = 0;
         foreach my $msg (@$msgs) {
             print "# Got message: $msg\n";
-            $should_we_stop = 1 if $msg eq 'message1001'; # will not do exit on message1001, maybe a bit more
+            # $should_we_stop = 1 if $msg eq 'message1001'; # will not do exit on message1001, maybe a bit more
         }
         return ! $should_we_stop; # 1 to continue, 0 to stop
     }
