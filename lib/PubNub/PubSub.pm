@@ -20,6 +20,7 @@ sub new {
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60;
+    $args{subscribe_timeout} ||= 3600; # 1 hours
 
     $args{callback} = sub {
         my ($res, $req) = @_;
@@ -89,34 +90,40 @@ sub subscribe {
         ) . "\r\n";
     }
 
-    my $id; $id = Mojo::IOLoop->client({
+    my $delay = Mojo::IOLoop->delay;
+    my $end   = $delay->begin;
+    my $handle = undef;
+    Mojo::IOLoop->client({
         address => $self->{host},
         port => $self->{port},
-        timeout => 90000,
+        timeout => $self->{subscribe_timeout}
     } => sub {
         my ($loop, $err, $stream) = @_;
-
-        print Dumper(\$err); use Data::Dumper;
-
-        $stream->on(read => sub {
-            my ($stream, $bytes) = @_;
-
-            my %data = $self->parse_response($bytes);
-            if ($data{json}) {
-                $timetoken = $data{json}->[1];
-            }
-
-            ## parse bytes
-            $callback->($data{json}->[0], \%data);
-
-            # print STDERR __r($timetoken) . "---\n";
-            $stream->write(__r($timetoken)); # never end loop
-        });
-
-        # Write request
-        # print STDERR __r($timetoken) . "---\n";
-        $stream->write(__r($timetoken));
+        $handle = $stream->steal_handle;
+        $end->();
     });
+    $delay->wait;
+
+    # turn into stream
+    my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($self->{subscribe_timeout});
+    my $id = Mojo::IOLoop->stream($stream);
+
+    $stream->on(read => sub {
+        my ($stream, $bytes) = @_;
+
+        my %data = $self->parse_response($bytes);
+        if ($data{json}) {
+            $timetoken = $data{json}->[1];
+        }
+
+        ## parse bytes
+        $callback->($data{json}->[0], \%data);
+
+        $stream->write(__r($timetoken)); # never end loop
+    });
+
+    # Write request
+    $stream->write(__r($timetoken));
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 }
