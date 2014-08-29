@@ -30,7 +30,7 @@ sub new {
     return $self;
 }
 
-sub send {
+sub publish {
     my $self = shift;
     my @msg = @_;
 

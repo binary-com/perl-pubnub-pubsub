@@ -39,7 +39,7 @@ my @messages;
 foreach (1 .. $total_message) {
     push @messages, "message" . int(rand(100000));
 }
-$pubnub->send(@messages);
+$pubnub->publish(@messages);
 
 print "Total got $got_message VS $total_message\n";
 my $duration = time() - $start_time;
