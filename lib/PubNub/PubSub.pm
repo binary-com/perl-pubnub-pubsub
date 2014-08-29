@@ -22,10 +22,6 @@ sub new {
     $args{timeout} ||= 60;
     $args{subscribe_timeout} ||= 3600; # 1 hours
 
-    $args{callback} = sub {
-        my ($res, $req) = @_;
-    };
-
     return bless \%args, $class;
 }
 
@@ -37,7 +33,7 @@ sub publish {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
-    my $callback = $params{callback} || $self->{callback};
+    my $callback = $params{callback} || sub {}; # could be just dummy callback
 
     # build request
     my @lines;
@@ -117,7 +113,10 @@ sub subscribe {
         }
 
         ## parse bytes
-        $callback->($data{json}->[0], \%data);
+        my $rtn = $callback->($data{json}->[0], \%data);
+        unless ($rtn) {
+            return Mojo::IOLoop->stop; # stop it
+        }
 
         $stream->write(__r($timetoken)); # never end loop
     });
@@ -165,15 +164,97 @@ __END__
 
 =head1 NAME
 
-PubNub::PubSub - Blah blah blah
+PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
 =head1 SYNOPSIS
 
-  use PubNub::PubSub;
+    use PubNub::PubSub;
+
+    my $pubnub = PubNub::PubSub->new(
+        pub_key => 'demo',
+        sub_key => 'demo',
+    );
+
+    # publish
+    $pubnub->publish({
+        messages => ['message1', 'message2'],
+        channel => 'some_unique_channel_perhaps',
+        callback => sub {
+            my ($res, $req) = @_;
+
+            # ...
+        }
+    });
+
+    # subscribe
+    $pubnub->subscribe({
+        channel => 'sandbox',
+        callback => sub {
+            my ($msgs, $data) = @_;
+            foreach my $msg (@$msgs) {
+                print "# Got message: $msg\n";
+            }
+            return 1; # 1 to continue, 0 to stop
+        }
+    });
+
 
 =head1 DESCRIPTION
 
-PubNub::PubSub is
+PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on M<Mojo::IOLoop>
+
+=head1 METHOD
+
+=head2 new
+
+=over 4
+
+=item * pub_key
+
+Publish Key, required.
+
+=item * sub_key
+
+Subscribe Key, required.
+
+=item * subscribe_timeout
+
+subscribe stream timeout. default is 1 hour = 3600
+
+=back
+
+=head2 subscribe
+
+subscribe channel to listen for the messages.
+
+    $pubnub->subscribe({
+        channel => 'sandbox',
+        callback => sub {
+            my ($msgs, $data) = @_;
+            foreach my $msg (@$msgs) {
+                print "# Got message: $msg\n";
+            }
+            return 1; # 1 to continue, 0 to stop
+        }
+    });
+
+return 0 to stop
+
+=head2 publish
+
+publish messages to channel
+
+    $pubnub->publish({
+        messages => ['message1', 'message2'],
+        channel => 'some_unique_channel_perhaps',
+        callback => sub {
+            my ($res) = @_;
+
+            # ...
+        }
+    });
+
+all B<messages> will be sent in one socket request. B<callback> could be dummy since there is no special order for that.
 
 =head1 AUTHOR
 
