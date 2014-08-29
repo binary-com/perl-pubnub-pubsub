@@ -16,6 +16,15 @@ my $start_time = time();
 my $pubnub = PubNub::PubSub->new(
     pub_key => 'pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258',
     sub_key => 'sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe',
+);
+
+print "Total sending $total_message\n";
+my @messages;
+foreach (1 .. $total_message) {
+    push @messages, "message" . int(rand(100000));
+}
+$pubnub->publish({
+    messages => \@messages,
     channel => 'HyperLogLogDemo1',
     callback => sub {
         my ($res, $req) = @_;
@@ -32,14 +41,7 @@ my $pubnub = PubNub::PubSub->new(
             print "$got_message Spent $duration.\n";
         }
     }
-);
-
-print "Total sending $total_message\n";
-my @messages;
-foreach (1 .. $total_message) {
-    push @messages, "message" . int(rand(100000));
-}
-$pubnub->publish(@messages);
+});
 
 print "Total got $got_message VS $total_message\n";
 my $duration = time() - $start_time;

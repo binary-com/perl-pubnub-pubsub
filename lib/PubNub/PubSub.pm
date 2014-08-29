@@ -13,29 +13,30 @@ sub new {
 
     $args{pub_key} or croak "pub_key is required.";
     $args{sub_key} or croak "sub_key is required.";
-    $args{channel} or croak "channel is required.";
+
 
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60;
 
-    my $self = bless \%args, $class;
-    unless ($self->{callback}) {
-        $self->{callback} = sub {
-            my $res = shift;
-            push @{ $self->{__res} }, $res;
-        };
-    }
+    $args{callback} = sub {
+        my ($res, $req) = @_;
+    };
 
-    return $self;
+    return bless \%args, $class;
 }
 
 sub publish {
     my $self = shift;
-    my @msg = @_;
+    my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    $self->{__res} = [];
+    my @msg = @{ $params{messages} };
+    my $channel = $params{channel} || $self->{channel};
+    $channel or croak "channel is required.";
 
+    my $callback = $params{callback} || $self->{callback};
+
+    # build request
     my @lines;
     foreach my $msg (@msg) {
         push @lines, "GET /publish/" . $self->{pub_key} . '/' . $self->{sub_key} . '/0/' . $self->{channel} . '/0/"' . $msg . '" HTTP/1.1';
@@ -54,7 +55,7 @@ sub publish {
             my ($stream, $bytes) = @_;
 
             ## parse bytes
-            $self->{callback}->($bytes, shift @msg);
+            $callback->($bytes, shift @msg);
 
             Mojo::IOLoop->remove($id) unless @msg;
         });
@@ -64,8 +65,6 @@ sub publish {
     });
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-
-    return @{ $self->{__res} };
 }
 
 1;
