@@ -54,8 +54,9 @@ sub publish {
             my ($stream, $bytes) = @_;
 
             ## parse bytes
-            $callback->($bytes, shift @msg);
+            $callback->($bytes);
 
+            shift @msg;
             Mojo::IOLoop->remove($id) unless @msg;
         });
 
@@ -89,7 +90,7 @@ sub subscribe {
     my $delay = Mojo::IOLoop->delay;
     my $end   = $delay->begin;
     my $handle = undef;
-    Mojo::IOLoop->client({
+    my $client_id = Mojo::IOLoop->client({
         address => $self->{host},
         port => $self->{port},
         timeout => $self->{subscribe_timeout}
@@ -102,7 +103,7 @@ sub subscribe {
 
     # turn into stream
     my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($self->{subscribe_timeout});
-    my $id = Mojo::IOLoop->stream($stream);
+    my $stream_id = Mojo::IOLoop->stream($stream);
 
     $stream->on(read => sub {
         my ($stream, $bytes) = @_;
@@ -180,7 +181,7 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
         messages => ['message1', 'message2'],
         channel => 'some_unique_channel_perhaps',
         callback => sub {
-            my ($res, $req) = @_;
+            my ($res) = @_;
 
             # ...
         }
@@ -202,6 +203,8 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 =head1 DESCRIPTION
 
 PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on M<Mojo::IOLoop>
+
+perl clone of L<https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining>
 
 =head1 METHOD
 
@@ -260,15 +263,44 @@ all B<messages> will be sent in one socket request. B<callback> could be dummy s
 
 Binary.com E<lt>fayland@gmail.comE<gt>
 
-=head1 COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
-Copyright 2014- Binary.com
+Copyright 2014- binary.com.
 
-=head1 LICENSE
+This program is free software; you can redistribute it and/or modify it
+under the terms of the the Artistic License (2.0). You may obtain a
+copy of the full license at:
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+L<http://www.perlfoundation.org/artistic_license_2_0>
 
-=head1 SEE ALSO
+Any use, modification, and distribution of the Standard or Modified
+Versions is governed by this Artistic License. By using, modifying or
+distributing the Package, you accept this license. Do not use, modify,
+or distribute the Package, if you do not accept this license.
+
+If your Modified Version has been derived from a Modified Version made
+by someone other than you, you are nevertheless required to ensure that
+your Modified Version complies with the requirements of this license.
+
+This license does not grant you the right to use any trademark, service
+mark, tradename, or logo of the Copyright Holder.
+
+This license includes the non-exclusive, worldwide, free-of-charge
+patent license to make, have made, use, offer to sell, sell, import and
+otherwise transfer the Package with respect to any patent claims
+licensable by the Copyright Holder that are necessarily infringed by the
+Package. If you institute patent litigation (including a cross-claim or
+counterclaim) against any party alleging that the Package constitutes
+direct or contributory patent infringement, then this Artistic License
+to you shall terminate on the date that such litigation is filed.
+
+Disclaimer of Warranty: THE PACKAGE IS PROVIDED BY THE COPYRIGHT HOLDER
+AND CONTRIBUTORS "AS IS' AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED TO THE EXTENT PERMITTED BY
+YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
+CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
+CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =cut
