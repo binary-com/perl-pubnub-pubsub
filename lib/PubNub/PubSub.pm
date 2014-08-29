@@ -6,6 +6,7 @@ our $VERSION = '0.01';
 
 use Carp;
 use Mojo::IOLoop;
+use Mojo::UserAgent;
 
 sub new {
     my $class = shift;
@@ -65,6 +66,56 @@ sub publish {
     });
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
+}
+
+sub subscribe {
+    my $self = shift;
+    my %params = @_ % 2 ? %{$_[0]} : @_;
+
+    my $channel = $params{channel} || $self->{channel};
+    $channel or croak "channel is required.";
+
+    my $callback = $params{callback} or croak "callback is required.";
+
+    my $timetoken = $params{timetoken} || '0';
+
+    my $ua = $self->{ua};
+    unless ($ua) {
+        $ua = Mojo::UserAgent->new;
+        $ua->max_redirects(3);
+        $ua->inactivity_timeout(120);
+        $ua->proxy->http($self->{proxy}) if $self->{proxy};
+        $self->{ua} = $ua;
+    }
+
+    # build URL from params
+    my $url = 'http://' . $self->{host} .
+        '/subscribe' .
+        '/' . $self->{'sub_key'} .
+        '/' . $channel .
+        '/0' .                  # TODO callback
+        '/' . $timetoken;
+    my $tx = $ua->get($url);
+    unless ($tx->success) {
+        print Dumper(\$tx); use Data::Dumper;
+        return $tx->error;
+    }
+
+    my $data = $tx->res->json;
+    print Dumper(\$data); use Data::Dumper;
+
+    my $messages = $data->[0];
+    $params{timetoken} = $data->[1];
+
+    if (! $messages) {
+        return $self->subscribe(%params);
+    }
+
+    foreach my $msg (@$messages) {
+        return if ! $callback->($msg);
+    }
+
+    return $self->subscribe(%params);
 }
 
 1;
