@@ -36,8 +36,8 @@ SYNOPSIS
 
 TEST
 
-    run perl examples/subscribe.pl in one terminal (or luanch may terminals with subscribe.pl)
-    run perl examples/publish.pl in another terminal (you'll see all subscribe terminals will get messages.)
+ * run perl examples/subscribe.pl in one terminal (or luanch may terminals with subscribe.pl)
+ * run perl examples/publish.pl in another terminal (you'll see all subscribe terminals will get messages.)
 
 INSTALLATION
 
