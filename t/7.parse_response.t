@@ -27,9 +27,12 @@ RESP
 $resp_text = join("\r\n", split(/\r?\n/, $resp_text));
 
 my %data = $pubnub->parse_response($resp_text);
+
+# diag(Dumper(\%data)); use Data::Dumper;
+
 is($data{code}, 200);
-is($data{header}{'Content-Type'}, 'text/javascript; charset="UTF-8"');
-is($data{header}{'Date'}, 'Fri, 29 Aug 2014 08:21:21 GMT');
+is($data{headers}{'Content-Type'}, 'text/javascript; charset="UTF-8"');
+is($data{headers}{'Date'}, 'Fri, 29 Aug 2014 08:21:21 GMT');
 is($data{body}, '[[],"14093004810481043"]');
 is($data{json}->[1], '14093004810481043');
 

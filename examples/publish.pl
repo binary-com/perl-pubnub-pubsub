@@ -8,7 +8,7 @@ use PubNub::PubSub;
 use Time::HiRes qw/time/;
 
 srand();
-my $total_message = 50000 + int(rand(50000));
+my $total_message = 20000; # 50000 + int(rand(50000));
 
 #  s.send('GET /publish/pub-c-5afaf11d-aa91-4a40-b0d2-77961fb3a258/sub-c-0cd3a376-28ac-11e4-95a7-02ee2ddab7fe/0/HyperLogLogDemo1/0/"'+str(id[random.randrange(0, numID-1)])+'" HTTP/1.1\r\nHost: pubsub.pubnub.com\r\n\r\n')
 my $got_message = 0;

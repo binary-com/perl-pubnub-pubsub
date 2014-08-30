@@ -33,7 +33,7 @@ sub publish {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
-    my $callback = $params{callback} || sub {}; # could be just dummy callback
+    my $callback = $params{callback}; # could be just dummy callback
 
     # build request
     my @lines;
@@ -50,12 +50,14 @@ sub publish {
     } => sub {
         my ($loop, $err, $stream) = @_;
 
-        $stream->on(read => sub {
-            my ($stream, $bytes) = @_;
+        if ($callback) {
+            $stream->on(read => sub {
+                my ($stream, $bytes) = @_;
 
-            ## parse bytes
-            $callback->($bytes);
-        });
+                ## parse bytes
+                $callback->($bytes);
+            });
+        }
 
         # Write request
         $stream->write($r);
@@ -102,20 +104,52 @@ sub subscribe {
     my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($self->{subscribe_timeout});
     my $stream_id = Mojo::IOLoop->stream($stream);
 
+    my $buf = ''; my $last_i = 0;
     $stream->on(read => sub {
         my ($stream, $bytes) = @_;
 
-        my %data = $self->parse_response($bytes);
+        my %data = $self->parse_response($buf . $bytes);
+
+        print "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
+
+        ## incomplete data
+        if ($data{error}) {
+            if ($data{error} eq 'incomplete') { # wait a bit more for completed data
+                $buf .= $bytes;
+                return;
+            }
+
+            # should never happen
+            $buf = '';
+            return $stream->write(__r($timetoken)); # retry with old token
+        }
+        $buf = '';
+
         if ($data{json}) {
             $timetoken = $data{json}->[1];
+        } else {
+            # never happen
+            die Dumper(\%data); use Data::Dumper;
+        }
+
+        # test
+        if ($self->{debug} and scalar(@{ $data{json}->[0] })) {
+            my $this_f = $data{json}->[0]->[0]; $this_f =~ s/message//;
+            if ($this_f - $last_i != 1) {
+                print "THRE IS A SUDDEN JUMP: $this_f vs $last_i\n";
+                die Dumper(\%data);
+            }
+            my $this_l = $data{json}->[0]->[-1]; $this_l =~ s/message//;
+            $last_i = $this_l;
         }
 
         ## parse bytes
-        my $rtn = $callback->($data{json}->[0], \%data);
+        my $rtn = $callback ? $callback->(@{ $data{json}->[0] }) : 1;
         unless ($rtn) {
             return Mojo::IOLoop->stop; # stop it
         }
 
+        print ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
         $stream->write(__r($timetoken)); # never end loop
     });
 
@@ -145,10 +179,17 @@ sub parse_response {
     my %data = (
         proto => $proto,
         code  => $status_code,
-        header => $header,
+        headers => $header,
         body   => $body,
     );
-    if ($data{header}->{'Content-Type'} =~ 'javascript') {
+
+    if (length($body) != $data{headers}{'Content-Length'}) { # data is incompleted
+        my $type = length($body) < $data{headers}{'Content-Length'} ? 'incomplete' : 'overflooded';
+        %data = (error => $type);
+        return wantarray ? %data : \%data;
+    }
+
+    if ($data{headers}->{'Content-Type'} =~ 'javascript') {
         $data{json} = decode_json($body);
     }
 
@@ -188,8 +229,8 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
     $pubnub->subscribe({
         channel => 'sandbox',
         callback => sub {
-            my ($msgs, $data) = @_;
-            foreach my $msg (@$msgs) {
+            my (@messages) = @_;
+            foreach my $msg (@messages) {
                 print "# Got message: $msg\n";
             }
             return 1; # 1 to continue, 0 to stop
@@ -240,8 +281,8 @@ subscribe channel to listen for the messages.
     $pubnub->subscribe({
         channel => 'sandbox',
         callback => sub {
-            my ($msgs, $data) = @_;
-            foreach my $msg (@$msgs) {
+            my (@messages) = @_;
+            foreach my $msg (@messages) {
                 print "# Got message: $msg\n";
             }
             return 1; # 1 to continue, 0 to stop
