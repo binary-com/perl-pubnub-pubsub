@@ -15,7 +15,7 @@ my $pubnub = PubNub::PubSub->new(
 
 my $res = $pubnub->history({
     channel => $ENV{PUBNUB_CHANNEL} || 'sandbox',
-    total => 20000
+    total => 100
 });
 
 print Dumper(\$res);

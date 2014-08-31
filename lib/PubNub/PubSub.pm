@@ -343,7 +343,7 @@ B<callback> will get all original response text which means it may have two or m
 
     my $res = $pubnub->history({
         channel => 'sandbox',
-        total => 20000
+        total => 100
     });
 
 get latest history.
