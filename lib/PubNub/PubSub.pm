@@ -17,7 +17,6 @@ sub new {
     $args{pub_key} or croak "pub_key is required.";
     $args{sub_key} or croak "sub_key is required.";
 
-
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60;
@@ -111,12 +110,12 @@ sub subscribe {
         my ($stream, $bytes) = @_;
 
         my %data = $self->parse_response($buf . $bytes);
+        print "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
+
         if ($data{code} == 403) {
             print STDERR "403 Forbidden: " . $data{body} . "\n";
             return;
         }
-
-        print "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
         ## incomplete data
         if ($data{error}) {
@@ -134,8 +133,8 @@ sub subscribe {
         if ($data{json}) {
             $timetoken = $data{json}->[1];
         } else {
-            # never happen
-            die Dumper(\%data); use Data::Dumper;
+            # should never happen
+            # die Dumper(\%data); use Data::Dumper;
         }
 
         # # test
