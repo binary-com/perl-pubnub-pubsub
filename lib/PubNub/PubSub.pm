@@ -340,6 +340,15 @@ all B<messages> will be sent in one socket request.
 
 B<callback> will get all original response text which means it may have two or more response text in one read. it's not that useful at all.
 
+=head2 history
+
+    my $res = $pubnub->history({
+        channel => 'sandbox',
+        total => 20000
+    });
+
+get latest history.
+
 =head1 AUTHOR
 
 Binary.com E<lt>fayland@gmail.comE<gt>
