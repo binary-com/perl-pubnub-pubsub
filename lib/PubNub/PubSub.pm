@@ -132,16 +132,16 @@ sub subscribe {
             die Dumper(\%data); use Data::Dumper;
         }
 
-        # test
-        if ($self->{debug} and scalar(@{ $data{json}->[0] })) {
-            my $this_f = $data{json}->[0]->[0]; $this_f =~ s/message//;
-            if ($this_f - $last_i != 1) {
-                print "THRE IS A SUDDEN JUMP: $this_f vs $last_i\n";
-                die Dumper(\%data);
-            }
-            my $this_l = $data{json}->[0]->[-1]; $this_l =~ s/message//;
-            $last_i = $this_l;
-        }
+        # # test
+        # if ($self->{debug} and scalar(@{ $data{json}->[0] })) {
+        #     my $this_f = $data{json}->[0]->[0]; $this_f =~ s/message//;
+        #     if ($this_f - $last_i != 1) {
+        #         print "THRE IS A SUDDEN JUMP: $this_f vs $last_i\n";
+        #         die Dumper(\%data);
+        #     }
+        #     my $this_l = $data{json}->[0]->[-1]; $this_l =~ s/message//;
+        #     $last_i = $this_l;
+        # }
 
         ## parse bytes
         my $rtn = $callback ? $callback->(@{ $data{json}->[0] }) : 1;
