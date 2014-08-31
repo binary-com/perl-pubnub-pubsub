@@ -22,6 +22,7 @@ sub new {
     $args{port} ||= 80;
     $args{timeout} ||= 60;
     $args{subscribe_timeout} ||= 3600; # 1 hours
+    $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
 
     return bless \%args, $class;
 }

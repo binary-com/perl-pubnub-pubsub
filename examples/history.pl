@@ -13,15 +13,11 @@ my $pubnub = PubNub::PubSub->new(
     debug => 1, # test
 );
 
-$pubnub->subscribe({
-    channel  => $ENV{PUBNUB_CHANNEL} || 'sandbox',
-    callback => sub {
-        my (@messages) = @_;
-        foreach my $msg (@messages) {
-        #    print "# Got message: $msg\n";
-        }
-        return 1; # 1 to continue, 0 to stop
-    }
+my $res = $pubnub->history({
+    channel => $ENV{PUBNUB_CHANNEL} || 'sandbox',
+    total => 20000
 });
+
+print Dumper(\$res);
 
 1;
