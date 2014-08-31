@@ -8,6 +8,7 @@ use Carp;
 use Mojo::IOLoop;
 use Socket qw/$CRLF/;
 use Mojo::JSON qw/decode_json/;
+use Mojo::UserAgent;
 
 sub new {
     my $class = shift;
@@ -194,6 +195,29 @@ sub parse_response {
     }
 
     return wantarray ? %data : \%data;
+}
+
+sub history {
+    my $self = shift;
+    my %params = @_ % 2 ? %{$_[0]} : @_;
+
+    my $channel = $params{channel} || $self->{channel};
+    $channel or croak "channel is required.";
+    my $total   = $params{total};
+    $channel or croak "param total is required.";
+
+    my $ua = $self->{ua};
+    unless ($self->{ua}) {
+        $ua = Mojo::UserAgent->new;
+        $ua->max_redirects(3);
+        $ua->inactivity_timeout(60);
+        $self->{ua} = $ua;
+    }
+
+    my $proto = ($self->{port} == 443) ? 'https://' : 'http://';
+    my $tx = $ua->get($proto . $self->{host} . "/history/" . $self->{sub_key} . "/$channel/0/$total");
+    return [$tx->error->{message}] unless $tx->success;
+    return $tx->res->json;
 }
 
 1;
