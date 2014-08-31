@@ -142,7 +142,7 @@ sub subscribe {
             my $this_f = $data{json}->[0]->[0]; $this_f =~ s/message//;
             if ($this_f - $last_i != 1) {
                 print "THRE IS A SUDDEN JUMP: $this_f vs $last_i\n";
-                die Dumper(\%data);
+                die;
             }
             my $this_l = $data{json}->[0]->[-1]; $this_l =~ s/message//;
             $last_i = $this_l;
