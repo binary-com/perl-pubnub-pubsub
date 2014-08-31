@@ -111,12 +111,16 @@ sub subscribe {
         my ($stream, $bytes) = @_;
 
         my %data = $self->parse_response($buf . $bytes);
+        if ($data{code} == 403) {
+            print STDERR "403 Forbidden: " . $data{body} . "\n";
+            return;
+        }
 
         print "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
         ## incomplete data
         if ($data{error}) {
-            if ($data{error} eq 'incomplete') { # wait a bit more for completed data
+            if ($data{message} eq 'incomplete') { # wait a bit more for completed data
                 $buf .= $bytes;
                 return;
             }
@@ -156,6 +160,7 @@ sub subscribe {
     });
 
     # Write request
+    print ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
     $stream->write(__r($timetoken));
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
@@ -185,13 +190,13 @@ sub parse_response {
         body   => $body,
     );
 
-    if (length($body) != $data{headers}{'Content-Length'}) { # data is incompleted
+    if ($data{code} == 200 and length($body) != $data{headers}{'Content-Length'}) { # data is incompleted
         my $type = length($body) < $data{headers}{'Content-Length'} ? 'incomplete' : 'overflooded';
-        %data = (error => $type);
+        %data = (error => 1, message => 'incomplete');
         return wantarray ? %data : \%data;
     }
 
-    if ($data{headers}->{'Content-Type'} =~ 'javascript') {
+    if ($data{code} == 200 and $data{headers}->{'Content-Type'} =~ 'javascript') {
         $data{json} = decode_json($body);
     }
 
@@ -212,6 +217,7 @@ sub history {
         $ua = Mojo::UserAgent->new;
         $ua->max_redirects(3);
         $ua->inactivity_timeout(60);
+        $ua->proxy->detect;
         $self->{ua} = $ua;
     }
 
