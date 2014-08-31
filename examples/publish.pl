@@ -8,7 +8,7 @@ use PubNub::PubSub;
 use Time::HiRes qw/time/;
 
 srand();
-my $total_message = 20000; # 50000 + int(rand(50000));
+my $total_message = 2000; # 50000 + int(rand(50000));
 
 my $got_message = 0;
 my $start_time = time();
