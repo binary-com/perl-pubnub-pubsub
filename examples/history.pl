@@ -13,11 +13,11 @@ my $pubnub = PubNub::PubSub->new(
     debug => 1, # test
 );
 
-my $res = $pubnub->history({
+my $history = $pubnub->history({
     channel => $ENV{PUBNUB_CHANNEL} || 'sandbox',
     total => 100
 });
 
-print Dumper(\$res);
+print Dumper(\$history);
 
 1;

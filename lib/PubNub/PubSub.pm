@@ -45,6 +45,7 @@ sub publish {
     }
     my $r = join("\r\n", @lines) . "\r\n";
 
+    my $buf = '';
     my $id; $id = Mojo::IOLoop->client({
         address => $self->{host},
         port => $self->{port}
@@ -55,8 +56,21 @@ sub publish {
             $stream->on(read => sub {
                 my ($stream, $bytes) = @_;
 
-                ## parse bytes
-                $callback->($bytes);
+                my @parts = split(/(HTTP\/1\.1 )/, $buf . $bytes);
+                shift @parts if $parts[0] eq '';
+
+                $buf = '';
+                while (@parts >= 2) {
+                    my $one_resp = join('', shift @parts, shift @parts);
+                    my %data = $self->parse_response($one_resp);
+                    if ($data{error}) {
+                        $buf = $one_resp;
+                        $buf .= join('', @parts) if @parts;
+                        last;
+                    } else {
+                        $callback->(\%data);
+                    }
+                }
             });
         }
 
@@ -135,17 +149,6 @@ sub subscribe {
         } else {
             # should never happen
             # die Dumper(\%data); use Data::Dumper;
-        }
-
-        # test
-        if ($self->{debug} and scalar(@{ $data{json}->[0] })) {
-            my $this_f = $data{json}->[0]->[0]; $this_f =~ s/message//;
-            if ($this_f - $last_i != 1) {
-                print "THRE IS A SUDDEN JUMP: $this_f vs $last_i\n";
-                die;
-            }
-            my $this_l = $data{json}->[0]->[-1]; $this_l =~ s/message//;
-            $last_i = $this_l;
         }
 
         ## parse bytes
@@ -249,9 +252,28 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
         messages => ['message1', 'message2'],
         channel => 'some_unique_channel_perhaps',
         callback => sub {
-            my ($res) = @_;
+            my ($data) = @_;
 
-            # ...
+            # sample $data
+            # {
+            #     'headers' => {
+            #                    'Connection' => 'keep-alive',
+            #                    'Content-Length' => 30,
+            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
+            #                    'Cache-Control' => 'no-cache',
+            #                    'Access-Control-Allow-Methods' => 'GET',
+            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
+            #                    'Access-Control-Allow-Origin' => '*'
+            #                  },
+            #     'body' => '[1,"Sent","14097510998021530"]',
+            #     'json' => [
+            #                 1,
+            #                 'Sent',
+            #                 '14097510998021530'
+            #               ],
+            #     'code' => 200,
+            #     'proto' => 'HTTP/1.1'
+            # };
         }
     });
 

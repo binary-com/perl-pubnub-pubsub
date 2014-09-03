@@ -6,9 +6,10 @@ use FindBin qw/$Bin/;
 use lib "$Bin/../lib";
 use PubNub::PubSub;
 use Time::HiRes qw/time/;
+use Data::Dumper;
 
 srand();
-my $total_message = 2000; # 50000 + int(rand(50000));
+my $total_message = 100; # 50000 + int(rand(50000));
 
 my $got_message = 0;
 my $start_time = time();
@@ -26,11 +27,9 @@ $pubnub->publish({
     messages => \@messages,
     channel  => $ENV{PUBNUB_CHANNEL} || 'sandbox',
     callback => sub {
-        my ($res) = @_;
+        my ($data) = @_;
 
-        # print "=" x 20 . "\n";
-        # print "RES: $res" . "\n";
-        # print "=" x 20 . "\n";
+        print Dumper(\$data);
 
         $got_message++;
         if ($got_message == $total_message or $got_message % 1000 == 0) {
