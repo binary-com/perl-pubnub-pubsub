@@ -14,13 +14,10 @@ sub new {
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
-    $args{pub_key} or croak "pub_key is required.";
-    $args{sub_key} or croak "sub_key is required.";
-
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
-    $args{timeout} ||= 60;
-    $args{subscribe_timeout} ||= 3600; # 1 hours
+    $args{timeout} ||= 60; # for ua timeout
+    $args{subscribe_timeout} ||= 3600; # subcribe streaming timeout, default to 1 hours
     $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
 
     return bless \%args, $class;
@@ -34,12 +31,17 @@ sub publish {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
+    my $pub_key = $params{pub_key} || $self->{pub_key};
+    $pub_key or croak "pub_key is required.";
+    my $sub_key = $params{sub_key} || $self->{sub_key};
+    $sub_key or croak "sub_key is required.";
+
     my $callback = $params{callback}; # could be just dummy callback
 
     # build request
     my @lines;
     foreach my $msg (@msg) {
-        push @lines, "GET /publish/" . $self->{pub_key} . '/' . $self->{sub_key} . '/0/' . $channel . '/0/"' . $msg . '" HTTP/1.1';
+        push @lines, qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$msg" HTTP/1.1~;
         push @lines, 'Host: pubsub.pubnub.com';
         push @lines, ''; # for \r\n
     }
@@ -55,6 +57,8 @@ sub publish {
         if ($callback) {
             $stream->on(read => sub {
                 my ($stream, $bytes) = @_;
+
+                print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
                 my @parts = split(/(HTTP\/1\.1 )/, $buf . $bytes);
                 shift @parts if $parts[0] eq '';
@@ -79,6 +83,7 @@ sub publish {
         }
 
         # Write request
+        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
         $stream->write($r);
     });
 
@@ -91,6 +96,8 @@ sub subscribe {
 
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
+    my $sub_key = $params{sub_key} || $self->{sub_key};
+    $sub_key or croak "sub_key is required.";
 
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
@@ -99,7 +106,7 @@ sub subscribe {
         my ($timetoken) = @_;
 
         return join("\r\n",
-            'GET /subscribe/' . $self->{'sub_key'} . '/' . $channel . '/0/' . $timetoken . ' HTTP/1.1',
+            "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
             'Host: pubsub.pubnub.com',
             ''
         ) . "\r\n";
@@ -128,7 +135,7 @@ sub subscribe {
         my ($stream, $bytes) = @_;
 
         my %data = $self->parse_response($buf . $bytes);
-        print "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
+        print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
         if ($data{code} == 403) {
             print STDERR "403 Forbidden: " . $data{body} . "\n";
@@ -161,12 +168,12 @@ sub subscribe {
             return Mojo::IOLoop->stop; # stop it
         }
 
-        print ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
+        print STDERR ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
         $stream->write(__r($timetoken)); # never end loop
     });
 
     # Write request
-    print ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
+    print STDERR ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
     $stream->write(__r($timetoken));
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
@@ -215,20 +222,22 @@ sub history {
 
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
-    my $total   = $params{total};
-    $channel or croak "param total is required.";
+    my $sub_key = $params{sub_key} || $self->{sub_key};
+    $sub_key or croak "sub_key is required.";
+
+    my $total   = $params{total} || 100;
 
     my $ua = $self->{ua};
     unless ($self->{ua}) {
         $ua = Mojo::UserAgent->new;
         $ua->max_redirects(3);
-        $ua->inactivity_timeout(60);
-        $ua->proxy->detect;
+        $ua->inactivity_timeout($self->{timeout});
+        $ua->proxy->detect; # env proxy
         $self->{ua} = $ua;
     }
 
     my $proto = ($self->{port} == 443) ? 'https://' : 'http://';
-    my $tx = $ua->get($proto . $self->{host} . "/history/" . $self->{sub_key} . "/$channel/0/$total");
+    my $tx = $ua->get($proto . $self->{host} . "/history/$sub_key/$channel/0/$total");
     return [$tx->error->{message}] unless $tx->success;
     return $tx->res->json;
 }
@@ -246,15 +255,14 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
     use PubNub::PubSub;
 
-    my $pubnub = PubNub::PubSub->new(
-        pub_key => 'demo',
-        sub_key => 'demo',
-    );
+    my $pubnub = PubNub::PubSub->new();
 
     # publish
     $pubnub->publish({
-        messages => ['message1', 'message2'],
+        pub_key => 'demo',
+        sub_key => 'demo',
         channel => 'some_unique_channel_perhaps',
+        messages => ['message1', 'message2'],
         callback => sub {
             my ($data) = @_;
 
@@ -283,6 +291,7 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
     # subscribe
     $pubnub->subscribe({
+        sub_key => 'demo',
         channel => 'sandbox',
         callback => sub {
             my (@messages) = @_;
@@ -316,17 +325,13 @@ For a rough test:
 
 =over 4
 
-=item * pub_key
-
-Publish Key, required.
-
-=item * sub_key
-
-Subscribe Key, required.
-
 =item * subscribe_timeout
 
 subscribe stream timeout. default is 1 hour = 3600
+
+=item * debug
+
+print network outgoing/incoming messages to STDERR
 
 =back
 
@@ -335,6 +340,7 @@ subscribe stream timeout. default is 1 hour = 3600
 subscribe channel to listen for the messages.
 
     $pubnub->subscribe({
+        sub_key => 'demo',
         channel => 'sandbox',
         callback => sub {
             my (@messages) = @_;
@@ -352,6 +358,8 @@ return 0 to stop
 publish messages to channel
 
     $pubnub->publish({
+        pub_key => 'demo',
+        sub_key => 'demo',
         messages => ['message1', 'message2'],
         channel => 'some_unique_channel_perhaps',
         callback => sub {
@@ -368,6 +376,7 @@ B<callback> will get all original response text which means it may have two or m
 =head2 history
 
     my $res = $pubnub->history({
+        sub_key => 'demo',
         channel => 'sandbox',
         total => 100
     });

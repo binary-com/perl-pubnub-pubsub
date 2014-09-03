@@ -6,15 +6,14 @@ SYNOPSIS
 
     use PubNub::PubSub;
 
-    my $pubnub = PubNub::PubSub->new(
-        pub_key => 'demo',
-        sub_key => 'demo',
-    );
+    my $pubnub = PubNub::PubSub->new();
 
     # publish
     $pubnub->publish({
-        messages => ['message1', 'message2'],
+        pub_key => 'demo',
+        sub_key => 'demo',
         channel => 'some_unique_channel_perhaps',
+        messages => ['message1', 'message2'],
         callback => sub {
             my ($data) = @_;
 
@@ -43,6 +42,7 @@ SYNOPSIS
 
     # subscribe
     $pubnub->subscribe({
+        sub_key => 'demo',
         channel => 'sandbox',
         callback => sub {
             my (@messages) = @_;
