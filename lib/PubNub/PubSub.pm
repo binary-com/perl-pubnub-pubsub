@@ -45,7 +45,7 @@ sub publish {
     }
     my $r = join("\r\n", @lines) . "\r\n";
 
-    my $buf = '';
+    my $buf = ''; my $total_msg = scalar(@msg); my $curr_msg_i = 0;
     my $id; $id = Mojo::IOLoop->client({
         address => $self->{host},
         port => $self->{port}
@@ -69,6 +69,10 @@ sub publish {
                         last;
                     } else {
                         $callback->(\%data);
+                        $curr_msg_i++;
+                        if ($curr_msg_i == $total_msg) {
+                            Mojo::IOLoop->stop($id);
+                        }
                     }
                 }
             });
@@ -119,7 +123,7 @@ sub subscribe {
     my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($self->{subscribe_timeout});
     my $stream_id = Mojo::IOLoop->stream($stream);
 
-    my $buf = ''; my $last_i = 0;
+    my $buf = '';
     $stream->on(read => sub {
         my ($stream, $bytes) = @_;
 

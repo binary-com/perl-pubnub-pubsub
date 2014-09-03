@@ -9,7 +9,7 @@ use Time::HiRes qw/time/;
 use Data::Dumper;
 
 srand();
-my $total_message = 100; # 50000 + int(rand(50000));
+my $total_message = 10; # 50000 + int(rand(50000));
 
 my $got_message = 0;
 my $start_time = time();
