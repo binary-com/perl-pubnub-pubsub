@@ -1,8 +1,8 @@
-PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com.
+# NAME
 
-Please see https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining
+PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
-SYNOPSIS
+# SYNOPSIS
 
     use PubNub::PubSub;
 
@@ -53,51 +53,92 @@ SYNOPSIS
         }
     });
 
-TEST
-
- * run perl examples/subscribe.pl in one terminal (or luanch may terminals with subscribe.pl)
- * run perl examples/publish.pl in another terminal (you'll see all subscribe terminals will get messages.)
-
-INSTALLATION
-
-To install this module, run the following commands:
-
-    perl Build.PL
-    ./Build
-    ./Build test
-    ./Build install
-
-SUPPORT AND DOCUMENTATION
-
-After installing, you can find documentation for this module with the
-perldoc command.
-
-    perldoc PubNub::PubSub
-
-You can also look for information at:
-
-    RT, CPAN's request tracker (report bugs here)
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=PubNub-PubSub
-
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/PubNub-PubSub
-
-    CPAN Ratings
-        http://cpanratings.perl.org/d/PubNub-PubSub
-
-    Search CPAN
-        http://search.cpan.org/dist/PubNub-PubSub/
 
 
-LICENSE AND COPYRIGHT
+# DESCRIPTION
 
-Copyright (C) 2014- binary.com
+PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on [Mojo::IOLoop](https://metacpan.org/pod/Mojo::IOLoop)
+
+perl clone of [https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining](https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining)
+
+For a rough test:
+
+- run perl examples/subscribe.pl in one terminal (or luanch may terminals with subscribe.pl)
+- run perl examples/publish.pl in another terminal (you'll see all subscribe terminals will get messages.)
+
+# METHOD
+
+## new
+
+- subscribe\_timeout
+
+    subscribe stream timeout. default is 1 hour = 3600
+
+- debug
+
+    print network outgoing/incoming messages to STDERR
+
+## subscribe
+
+subscribe channel to listen for the messages.
+
+    $pubnub->subscribe({
+        sub_key => 'demo',
+        channel => 'sandbox',
+        callback => sub {
+            my (@messages) = @_;
+            foreach my $msg (@messages) {
+                print "# Got message: $msg\n";
+            }
+            return 1; # 1 to continue, 0 to stop
+        }
+    });
+
+return 0 to stop
+
+## publish
+
+publish messages to channel
+
+    $pubnub->publish({
+        pub_key => 'demo',
+        sub_key => 'demo',
+        messages => ['message1', 'message2'],
+        channel => 'some_unique_channel_perhaps',
+        callback => sub {
+            my ($res) = @_;
+
+            # ... $res is raw HTTP Response (in bulk)
+        }
+    });
+
+all __messages__ will be sent in one socket request.
+
+__callback__ will get all original response text which means it may have two or more response text in one read. it's not that useful at all.
+
+## history
+
+    my $res = $pubnub->history({
+        sub_key => 'demo',
+        channel => 'sandbox',
+        total => 100
+    });
+
+get latest history.
+
+# AUTHOR
+
+Binary.com <fayland@gmail.com>
+
+# LICENSE AND COPYRIGHT
+
+Copyright 2014- binary.com.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the the Artistic License (2.0). You may obtain a
 copy of the full license at:
 
-L<http://www.perlfoundation.org/artistic_license_2_0>
+[http://www.perlfoundation.org/artistic_license_2_0](http://www.perlfoundation.org/artistic_license_2_0)
 
 Any use, modification, and distribution of the Standard or Modified
 Versions is governed by this Artistic License. By using, modifying or
