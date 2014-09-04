@@ -305,7 +305,7 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
 =head1 DESCRIPTION
 
-PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on M<Mojo::IOLoop>
+PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on L<Mojo::IOLoop>
 
 perl clone of L<https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining>
 
