@@ -360,12 +360,31 @@ publish messages to channel
     $pubnub->publish({
         pub_key => 'demo',
         sub_key => 'demo',
-        messages => ['message1', 'message2'],
         channel => 'some_unique_channel_perhaps',
+        messages => ['message1', 'message2'],
         callback => sub {
-            my ($res) = @_;
+            my ($data) = @_;
 
-            # ... $res is raw HTTP Response (in bulk)
+            # sample $data
+            # {
+            #     'headers' => {
+            #                    'Connection' => 'keep-alive',
+            #                    'Content-Length' => 30,
+            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
+            #                    'Cache-Control' => 'no-cache',
+            #                    'Access-Control-Allow-Methods' => 'GET',
+            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
+            #                    'Access-Control-Allow-Origin' => '*'
+            #                  },
+            #     'body' => '[1,"Sent","14097510998021530"]',
+            #     'json' => [
+            #                 1,
+            #                 'Sent',
+            #                 '14097510998021530'
+            #               ],
+            #     'code' => 200,
+            #     'proto' => 'HTTP/1.1'
+            # };
         }
     });
 
