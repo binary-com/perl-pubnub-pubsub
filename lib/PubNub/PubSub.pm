@@ -7,7 +7,7 @@ our $VERSION = '0.01';
 use Carp;
 use Mojo::IOLoop;
 use Socket qw/$CRLF/;
-use Mojo::JSON qw/decode_json/;
+use Mojo::JSON;
 use Mojo::UserAgent;
 
 sub new {
@@ -19,6 +19,7 @@ sub new {
     $args{timeout} ||= 60; # for ua timeout
     $args{subscribe_timeout} ||= 3600; # subcribe streaming timeout, default to 1 hours
     $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
+    $args{json} ||= Mojo::JSON->new;
 
     return bless \%args, $class;
 }
@@ -210,7 +211,7 @@ sub parse_response {
     }
 
     if ($data{code} == 200 and $data{headers}->{'Content-Type'} =~ 'javascript') {
-        $data{json} = decode_json($body);
+        $data{json} = $self->{json}->decode($body);
     }
 
     return wantarray ? %data : \%data;

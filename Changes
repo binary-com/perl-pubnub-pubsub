@@ -1,6 +1,7 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+        - for old Mojo version
 
 0.01  2014-09-04 09:38:13 CST
         - Initial release
