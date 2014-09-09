@@ -104,7 +104,7 @@ sub subscribe {
     my $timetoken = $params{timetoken} || '0';
 
     sub __r {
-        my ($timetoken) = @_;
+        my ($sub_key, $channel, $timetoken) = @_;
 
         return join("\r\n",
             "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
@@ -152,7 +152,7 @@ sub subscribe {
 
             # should never happen
             $buf = '';
-            return $stream->write(__r($timetoken)); # retry with old token
+            return $stream->write(__r($sub_key, $channel, $timetoken)); # retry with old token
         }
         $buf = '';
 
@@ -169,13 +169,13 @@ sub subscribe {
             return Mojo::IOLoop->stop; # stop it
         }
 
-        print STDERR ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
-        $stream->write(__r($timetoken)); # never end loop
+        print STDERR ">>>>>>\n" . __r($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
+        $stream->write(__r($sub_key, $channel, $timetoken)); # never end loop
     });
 
     # Write request
-    print STDERR ">>>>>>\n" . __r($timetoken) . "\n>>>>>>\n" if $self->{debug};
-    $stream->write(__r($timetoken));
+    print STDERR ">>>>>>\n" . __r($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
+    $stream->write(__r($sub_key, $channel, $timetoken));
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 }
