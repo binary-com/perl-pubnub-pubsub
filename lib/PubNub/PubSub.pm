@@ -28,7 +28,7 @@ sub publish {
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    my @msg = @{ $params{messages} };
+    my @messages = @{ $params{messages} };
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
@@ -39,16 +39,17 @@ sub publish {
 
     my $callback = $params{callback}; # could be just dummy callback
 
-    # build request
-    my @lines;
-    foreach my $msg (@msg) {
-        push @lines, qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$msg" HTTP/1.1~;
-        push @lines, 'Host: pubsub.pubnub.com';
-        push @lines, ''; # for \r\n
-    }
-    my $r = join("\r\n", @lines) . "\r\n";
+    sub __pr {
+        my ($pub_key, $sub_key, $channel, $msg) = @_;
 
-    my $buf = ''; my $total_msg = scalar(@msg); my $curr_msg_i = 0;
+        return join("\r\n",
+            qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$msg" HTTP/1.1~,
+            'Host: pubsub.pubnub.com',
+            ''
+        ) . "\r\n";
+    }
+
+    my $buf = ''; my $total_msg = scalar(@messages); my $curr_msg_i = 0;
     my $id; $id = Mojo::IOLoop->client({
         address => $self->{host},
         port => $self->{port}
@@ -80,12 +81,17 @@ sub publish {
                         }
                     }
                 }
+
+                my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
+                print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
+                $stream->write($r) if $r;
             });
         }
 
         # Write request
-        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
-        $stream->write($r);
+        my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
+        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
+        $stream->write($r) if $r;
     });
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
@@ -103,7 +109,7 @@ sub subscribe {
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
 
-    sub __r {
+    sub __sr {
         my ($sub_key, $channel, $timetoken) = @_;
 
         return join("\r\n",
@@ -152,7 +158,7 @@ sub subscribe {
 
             # should never happen
             $buf = '';
-            return $stream->write(__r($sub_key, $channel, $timetoken)); # retry with old token
+            return $stream->write(__sr($sub_key, $channel, $timetoken)); # retry with old token
         }
         $buf = '';
 
@@ -169,13 +175,13 @@ sub subscribe {
             return Mojo::IOLoop->stop; # stop it
         }
 
-        print STDERR ">>>>>>\n" . __r($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
-        $stream->write(__r($sub_key, $channel, $timetoken)); # never end loop
+        print STDERR ">>>>>>\n" . __sr($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
+        $stream->write(__sr($sub_key, $channel, $timetoken)); # never end loop
     });
 
     # Write request
-    print STDERR ">>>>>>\n" . __r($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
-    $stream->write(__r($sub_key, $channel, $timetoken));
+    print STDERR ">>>>>>\n" . __sr($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
+    $stream->write(__sr($sub_key, $channel, $timetoken));
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 }
