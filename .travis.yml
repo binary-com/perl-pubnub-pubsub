@@ -9,4 +9,4 @@ before_install:
     - "cpanm Test::More"
     - "cpanm Devel::Cover::Report::Coveralls"
 script:
-  perl Build.PL && ./Build && ./Build test && cover -test -report coveralls
+  perl Makefile.PL && make test && cover -test -report coveralls
