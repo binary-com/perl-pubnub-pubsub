@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+
+0.03  2014-09-09 16:57:12 CST
         - fix the some old perl? pass more args to the __r sub
 
 0.02  2014-09-05 19:16:43 CST
