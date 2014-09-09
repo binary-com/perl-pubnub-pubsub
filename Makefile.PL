@@ -18,7 +18,7 @@ my %WriteMakefileArgs = (
   },
   "DISTNAME" => "PubNub-PubSub",
   "EXE_FILES" => [],
-  "LICENSE" => "perl",
+  "LICENSE" => "apache",
   "NAME" => "PubNub::PubSub",
   "PREREQ_PM" => {
     "Mojo::IOLoop" => 0
@@ -26,7 +26,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => "0.96"
   },
-  "VERSION" => "0.02",
+  "VERSION" => "0.03",
   "test" => {
     "TESTS" => "t/*.t"
   }
