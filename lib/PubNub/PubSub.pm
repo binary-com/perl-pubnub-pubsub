@@ -31,7 +31,6 @@ sub publish {
     my @messages = @{ $params{messages} };
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
-
     my $pub_key = $params{pub_key} || $self->{pub_key};
     $pub_key or croak "pub_key is required.";
     my $sub_key = $params{sub_key} || $self->{sub_key};
@@ -262,13 +261,17 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
     use PubNub::PubSub;
 
-    my $pubnub = PubNub::PubSub->new();
+    my $pubnub = PubNub::PubSub->new(
+        pub_key => 'demo',
+        sub_key => 'demo',
+        channel => 'sandbox'
+    );
 
     # publish
     $pubnub->publish({
-        pub_key => 'demo',
-        sub_key => 'demo',
-        channel => 'some_unique_channel_perhaps',
+        pub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         messages => ['message1', 'message2'],
         callback => sub {
             my ($data) = @_;
@@ -298,8 +301,8 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
     # subscribe
     $pubnub->subscribe({
-        sub_key => 'demo',
-        channel => 'sandbox',
+        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -340,6 +343,14 @@ subscribe stream timeout. default is 1 hour = 3600
 
 print network outgoing/incoming messages to STDERR
 
+=item * pub_key
+
+=item * sub_key
+
+=item * channel
+
+default value when it's not passed in METHODS below.
+
 =back
 
 =head2 subscribe
@@ -347,8 +358,8 @@ print network outgoing/incoming messages to STDERR
 subscribe channel to listen for the messages.
 
     $pubnub->subscribe({
-        sub_key => 'demo',
-        channel => 'sandbox',
+        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -365,9 +376,9 @@ return 0 to stop
 publish messages to channel
 
     $pubnub->publish({
-        pub_key => 'demo',
-        sub_key => 'demo',
-        channel => 'some_unique_channel_perhaps',
+        pub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         messages => ['message1', 'message2'],
         callback => sub {
             my ($data) = @_;
@@ -402,8 +413,8 @@ B<callback> will get all original response text which means it may have two or m
 =head2 history
 
     my $res = $pubnub->history({
-        sub_key => 'demo',
-        channel => 'sandbox',
+        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
+        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         total => 100
     });
 
