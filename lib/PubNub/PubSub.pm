@@ -36,7 +36,7 @@ sub publish {
     my $sub_key = $params{sub_key} || $self->{sub_key};
     $sub_key or croak "sub_key is required.";
 
-    my $callback = $params{callback}; # could be just dummy callback
+    my $callback = $self->{publish_callback} || $params{callback}; # could be just dummy callback
 
     sub __pr {
         my ($pub_key, $sub_key, $channel, $msg) = @_;
@@ -55,12 +55,12 @@ sub publish {
     } => sub {
         my ($loop, $err, $stream) = @_;
 
-        if ($callback) {
-            $stream->on(read => sub {
-                my ($stream, $bytes) = @_;
+        $stream->on(read => sub {
+            my ($stream, $bytes) = @_;
 
-                print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
+            print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
+            if ($callback) {
                 my @parts = split(/(HTTP\/1\.1 )/, $buf . $bytes);
                 shift @parts if $parts[0] eq '';
 
@@ -80,12 +80,12 @@ sub publish {
                         }
                     }
                 }
+            }
 
-                my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
-                print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
-                $stream->write($r) if $r;
-            });
-        }
+            my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
+            print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
+            $stream->write($r) if $r;
+        });
 
         # Write request
         my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
