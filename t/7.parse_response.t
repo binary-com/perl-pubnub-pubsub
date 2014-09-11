@@ -8,6 +8,7 @@ use Test::More;
 my $pubnub = PubNub::PubSub->new(
     pub_key => 'demo',
     sub_key => 'demo',
+    channel => 'sandbox'
 );
 
 my $resp_text = <<'RESP';
