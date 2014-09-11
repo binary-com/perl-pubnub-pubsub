@@ -2,10 +2,6 @@
 
 PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
-[![Build Status](https://travis-ci.org/binary-com/perl-pubnub-pubsub.svg?branch=master)](https://travis-ci.org/binary-com/perl-pubnub-pubsub)
-[![Coverage Status](https://coveralls.io/repos/binary-com/perl-pubnub-pubsub/badge.png?branch=master)](https://coveralls.io/r/binary-com/perl-pubnub-pubsub?branch=master)
-[![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
-
 # SYNOPSIS
 
     use PubNub::PubSub;
@@ -41,8 +37,13 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
     );
 
     # publish
-    $pubnub->publish('message1', 'message2');
-    $pubnub->publish('message3', 'message4');
+    $pubnub->publish({
+        messages => ['message1', 'message2']
+    });
+    $pubnub->publish({
+        channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
+        messages => ['message3', 'message4']
+    });
 
     # subscribe
     $pubnub->subscribe({
@@ -74,15 +75,15 @@ For a rough test:
 
 - pub\_key
 
-    optional, required only for publish
+    optional, default pub\_key for publish
 
 - sub\_key
 
-    required.
+    optional, default sub\_key for all methods
 
 - channel
 
-    required.
+    optional, default channel for all methods
 
 - publish\_callback
 
@@ -120,8 +121,13 @@ return 0 to stop
 
 publish messages to channel
 
-    $pubnub->publish('message1', 'message2');
-    $pubnub->publish('message3', 'message4');
+    $pubnub->publish({
+        messages => ['message1', 'message2']
+    });
+    $pubnub->publish({
+        channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
+        messages => ['message3', 'message4']
+    });
 
 Note if you need callback, please pass it when do ->new with __publish\_callback__.
 

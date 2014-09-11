@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+
+0.05  2014-09-11 16:02:08 CST
         - more elegant methods to call (API Changes, I bet you haven't use the latest version in such short time.)
 
 0.04  2014-09-11 14:55:35 CST
