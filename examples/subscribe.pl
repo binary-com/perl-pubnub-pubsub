@@ -9,15 +9,15 @@ use Data::Dumper;
 
 my $pubnub = PubNub::PubSub->new(
     debug => 1, # test
+    sub_key => $ENV{PUBNUB_SUB_KEY} || 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
+    channel => $ENV{PUBNUB_CHANNEL} || 'sandbox',
 );
 
 $pubnub->subscribe({
-    sub_key => $ENV{PUBNUB_SUB_KEY} || 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
-    channel  => $ENV{PUBNUB_CHANNEL} || 'sandbox',
     callback => sub {
         my (@messages) = @_;
         foreach my $msg (@messages) {
-        #    print "# Got message: $msg\n";
+            print "# Got message: $msg\n";
         }
         return 1; # 1 to continue, 0 to stop
     }

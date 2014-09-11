@@ -9,138 +9,104 @@ use Mojo::IOLoop;
 use Socket qw/$CRLF/;
 use Mojo::JSON;
 use Mojo::UserAgent;
+use Scalar::Util qw(weaken);
 
 sub new {
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
+    $args{channel} or croak "channel is required.";
+    $args{sub_key} or croak "sub_key is required.";
+
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60; # for ua timeout
+    $args{publish_timeout} ||= 3600;
     $args{subscribe_timeout} ||= 3600; # subcribe streaming timeout, default to 1 hours
     $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
     $args{json} ||= Mojo::JSON->new;
+    $args{publish_queue} ||= [];
 
     return bless \%args, $class;
 }
 
 sub publish {
     my $self = shift;
-    my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    my @messages = @{ $params{messages} };
-    my $channel = $params{channel} || $self->{channel};
-    $channel or croak "channel is required.";
-    my $pub_key = $params{pub_key} || $self->{pub_key};
-    $pub_key or croak "pub_key is required.";
-    my $sub_key = $params{sub_key} || $self->{sub_key};
-    $sub_key or croak "sub_key is required.";
+    $self->{pub_key} or croak "pub_key is required.";
 
-    my $callback = $self->{publish_callback} || $params{callback}; # could be just dummy callback
+    my @messages = @_;
+    push @{ $self->{publish_queue} }, @messages; # queue
 
-    sub __pr {
-        my ($pub_key, $sub_key, $channel, $msg) = @_;
+    weaken $self;
+    $self->__build_stream('__publish_stream', sub {
+        my ($stream, $bytes) = @_;
 
-        return join("\r\n",
-            qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$msg" HTTP/1.1~,
-            'Host: pubsub.pubnub.com',
-            ''
-        ) . "\r\n";
-    }
+        print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
-    my $buf = ''; my $total_msg = scalar(@messages); my $curr_msg_i = 0;
-    my $id; $id = Mojo::IOLoop->client({
-        address => $self->{host},
-        port => $self->{port}
-    } => sub {
-        my ($loop, $err, $stream) = @_;
+        my $callback = $self->{publish_callback};
+        if ($callback) {
+            my @parts = split(/(HTTP\/1\.1 )/, $self->{__publish_buf} . $bytes);
+            shift @parts if $parts[0] eq '';
 
-        $stream->on(read => sub {
-            my ($stream, $bytes) = @_;
-
-            print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
-
-            if ($callback) {
-                my @parts = split(/(HTTP\/1\.1 )/, $buf . $bytes);
-                shift @parts if $parts[0] eq '';
-
-                $buf = '';
-                while (@parts >= 2) {
-                    my $one_resp = join('', shift @parts, shift @parts);
-                    my %data = $self->parse_response($one_resp);
-                    if ($data{error}) {
-                        $buf = $one_resp;
-                        $buf .= join('', @parts) if @parts;
-                        last;
-                    } else {
-                        $callback->(\%data);
-                        $curr_msg_i++;
-                        if ($curr_msg_i == $total_msg) {
-                            Mojo::IOLoop->stop($id);
-                        }
-                    }
+            $self->{__publish_buf} = '';
+            while (@parts >= 2) {
+                my $one_resp = join('', shift @parts, shift @parts);
+                my %data = $self->parse_response($one_resp);
+                if ($data{error}) {
+                    $self->{__publish_buf} = $one_resp;
+                    $self->{__publish_buf} .= join('', @parts) if @parts;
+                    last;
+                } else {
+                    $callback->(\%data);
                 }
             }
-
-            my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
-            print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
-            $stream->write($r) if $r;
-        });
+        }
 
         # Write request
-        my $r = @messages ? __pr($pub_key, $sub_key, $channel, shift @messages) : '';
-        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug} and $r;
-        $stream->write($r) if $r;
-    });
+        $self->__write_publish();
+    }, $self->{publish_timeout});
+
+    # Write request
+    $self->__write_publish();
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
+}
+
+sub __write_publish {
+    my ($self) = @_;
+
+    my $queue = $self->{publish_queue};
+    unless (scalar(@$queue)) {
+        Mojo::IOLoop->stop;
+        return;
+    }
+
+    my $message = shift @$queue;
+    my ($pub_key, $sub_key, $channel) = ($self->{pub_key}, $self->{sub_key}, $self->{channel});
+
+    my $r = join("\r\n",
+        qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$message" HTTP/1.1~,
+        'Host: pubsub.pubnub.com',
+        ''
+    ) . "\r\n";
+    print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
+    my $stream = $self->{'__publish_stream'};
+    $stream->write($r);
 }
 
 sub subscribe {
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    my $channel = $params{channel} || $self->{channel};
-    $channel or croak "channel is required.";
-    my $sub_key = $params{sub_key} || $self->{sub_key};
-    $sub_key or croak "sub_key is required.";
-
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
 
-    sub __sr {
-        my ($sub_key, $channel, $timetoken) = @_;
-
-        return join("\r\n",
-            "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
-            'Host: pubsub.pubnub.com',
-            ''
-        ) . "\r\n";
-    }
-
-    my $delay = Mojo::IOLoop->delay;
-    my $end   = $delay->begin;
-    my $handle = undef;
-    my $client_id = Mojo::IOLoop->client({
-        address => $self->{host},
-        port => $self->{port},
-        timeout => $self->{subscribe_timeout}
-    } => sub {
-        my ($loop, $err, $stream) = @_;
-        $handle = $stream->steal_handle;
-        $end->();
-    });
-    $delay->wait;
-
-    # turn into stream
-    my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($self->{subscribe_timeout});
-    my $stream_id = Mojo::IOLoop->stream($stream);
-
-    my $buf = '';
-    $stream->on(read => sub {
+    weaken $self;
+    my $stream = $self->__build_stream('__subscribe_stream', sub {
         my ($stream, $bytes) = @_;
 
-        my %data = $self->parse_response($buf . $bytes);
+        my %data = $self->parse_response($self->{__subscribe_buf} . $bytes);
         print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
 
         if ($data{code} == 403) {
@@ -151,15 +117,17 @@ sub subscribe {
         ## incomplete data
         if ($data{error}) {
             if ($data{message} eq 'incomplete') { # wait a bit more for completed data
-                $buf .= $bytes;
+                $self->{__subscribe_buf} .= $bytes;
                 return;
             }
 
             # should never happen
-            $buf = '';
-            return $stream->write(__sr($sub_key, $channel, $timetoken)); # retry with old token
+            $self->{__subscribe_buf} = '';
+            my $r = $self->__build_subscribe_req($timetoken);
+            print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
+            return $stream->write($r); # retry with old token
         }
-        $buf = '';
+        $self->{__subscribe_buf} = '';
 
         if ($data{json}) {
             $timetoken = $data{json}->[1];
@@ -174,15 +142,60 @@ sub subscribe {
             return Mojo::IOLoop->stop; # stop it
         }
 
-        print STDERR ">>>>>>\n" . __sr($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
-        $stream->write(__sr($sub_key, $channel, $timetoken)); # never end loop
-    });
+        # Write request
+        my $r = $self->__build_subscribe_req($timetoken);
+        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
+        $stream->write($r); # retry with old token
+    }, $self->{subscribe_timeout});
 
     # Write request
-    print STDERR ">>>>>>\n" . __sr($sub_key, $channel, $timetoken) . "\n>>>>>>\n" if $self->{debug};
-    $stream->write(__sr($sub_key, $channel, $timetoken));
+    my $r = $self->__build_subscribe_req($timetoken);
+    print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
+    $stream->write($r); # retry with old token
 
     Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
+}
+
+sub __build_subscribe_req {
+    my ($self, $timetoken) = @_;
+
+    my ($sub_key, $channel) = ($self->{sub_key}, $self->{channel});
+    return join("\r\n",
+        "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
+        'Host: pubsub.pubnub.com',
+        ''
+    ) . "\r\n";
+}
+
+sub __build_stream {
+    my ($self, $k, $callback, $timeout) = @_;
+
+    return $self->{$k} if $self->{$k}; # already built
+
+    print "Connecting stream for $k ...\n" if $self->{debug};
+    weaken $self;
+
+    my $delay = Mojo::IOLoop->delay;
+    my $end   = $delay->begin;
+    my $handle = undef;
+    my $client_id = Mojo::IOLoop->client({
+        address => $self->{host},
+        port => $self->{port},
+        timeout => $timeout
+    } => sub {
+        my ($loop, $err, $stream) = @_;
+        $handle = $stream->steal_handle;
+        $end->();
+    });
+    $delay->wait;
+
+    my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($timeout);
+    Mojo::IOLoop->stream($stream);
+
+    $stream->on(read => sub { $callback->(@_); });
+    $self->{$k} = $stream;
+
+    return $stream;
 }
 
 sub parse_response {
@@ -224,14 +237,14 @@ sub parse_response {
 
 sub history {
     my $self = shift;
-    my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    my $channel = $params{channel} || $self->{channel};
-    $channel or croak "channel is required.";
-    my $sub_key = $params{sub_key} || $self->{sub_key};
-    $sub_key or croak "sub_key is required.";
-
-    my $total   = $params{total} || 100;
+    my $total = 0;
+    if (scalar(@_) == 1 and ref($_[0]) ne 'HASH') {
+        $total = shift;
+    } else {
+        my %params = @_ % 2 ? %{$_[0]} : @_;
+        $total = $params{total} || 100;
+    }
 
     my $ua = $self->{ua};
     unless ($self->{ua}) {
@@ -242,6 +255,7 @@ sub history {
         $self->{ua} = $ua;
     }
 
+    my ($sub_key, $channel) = ($self->{sub_key}, $self->{channel});
     my $proto = ($self->{port} == 443) ? 'https://' : 'http://';
     my $tx = $ua->get($proto . $self->{host} . "/history/$sub_key/$channel/0/$total");
     return [$tx->error->{message}] unless $tx->success;
@@ -262,18 +276,10 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
     use PubNub::PubSub;
 
     my $pubnub = PubNub::PubSub->new(
-        pub_key => 'demo',
+        pub_key => 'demo', # only required for publish
         sub_key => 'demo',
-        channel => 'sandbox'
-    );
-
-    # publish
-    $pubnub->publish({
-        pub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
-        messages => ['message1', 'message2'],
-        callback => sub {
+        channel => 'sandbox',
+        publish_callback => sub {
             my ($data) = @_;
 
             # sample $data
@@ -297,12 +303,14 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
             #     'proto' => 'HTTP/1.1'
             # };
         }
-    });
+    );
+
+    # publish
+    $pubnub->publish('message1', 'message2');
+    $pubnub->publish('message3', 'message4');
 
     # subscribe
     $pubnub->subscribe({
-        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -335,6 +343,26 @@ For a rough test:
 
 =over 4
 
+=item * pub_key
+
+optional, required only for publish
+
+=item * sub_key
+
+required.
+
+=item * channel
+
+required.
+
+=item * publish_callback
+
+optional. check every response on publish.
+
+=item * publish_timeout
+
+publish stream timeout. default is 1 hour = 3600
+
 =item * subscribe_timeout
 
 subscribe stream timeout. default is 1 hour = 3600
@@ -343,14 +371,6 @@ subscribe stream timeout. default is 1 hour = 3600
 
 print network outgoing/incoming messages to STDERR
 
-=item * pub_key
-
-=item * sub_key
-
-=item * channel
-
-default value when it's not passed in METHODS below.
-
 =back
 
 =head2 subscribe
@@ -358,8 +378,6 @@ default value when it's not passed in METHODS below.
 subscribe channel to listen for the messages.
 
     $pubnub->subscribe({
-        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -375,48 +393,14 @@ return 0 to stop
 
 publish messages to channel
 
-    $pubnub->publish({
-        pub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
-        messages => ['message1', 'message2'],
-        callback => sub {
-            my ($data) = @_;
+    $pubnub->publish('message1', 'message2');
+    $pubnub->publish('message3', 'message4');
 
-            # sample $data
-            # {
-            #     'headers' => {
-            #                    'Connection' => 'keep-alive',
-            #                    'Content-Length' => 30,
-            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
-            #                    'Cache-Control' => 'no-cache',
-            #                    'Access-Control-Allow-Methods' => 'GET',
-            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
-            #                    'Access-Control-Allow-Origin' => '*'
-            #                  },
-            #     'body' => '[1,"Sent","14097510998021530"]',
-            #     'json' => [
-            #                 1,
-            #                 'Sent',
-            #                 '14097510998021530'
-            #               ],
-            #     'code' => 200,
-            #     'proto' => 'HTTP/1.1'
-            # };
-        }
-    });
-
-all B<messages> will be sent in one socket request.
-
-B<callback> will get all original response text which means it may have two or more response text in one read. it's not that useful at all.
+Note if you need callback, please pass it when do ->new with B<publish_callback>.
 
 =head2 history
 
-    my $res = $pubnub->history({
-        sub_key => 'demo',    # if it's not passed, we'll use the one from ->new
-        channel => 'sandbox', # if it's not passed, we'll use the one from ->new
-        total => 100
-    });
+    my $res = $pubnub->history(100);
 
 get latest history.
 

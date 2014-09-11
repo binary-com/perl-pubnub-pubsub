@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+        - API Changes. publish only accepts messages and all others should be passed into ->new
+        - use one connection for all publish no matter how many times it's called
 
 0.03  2014-09-09 16:57:12 CST
         - fix the some old perl? pass more args to the __r sub
