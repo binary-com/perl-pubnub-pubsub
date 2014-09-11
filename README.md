@@ -6,15 +6,11 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
     use PubNub::PubSub;
 
-    my $pubnub = PubNub::PubSub->new();
-
-    # publish
-    $pubnub->publish({
-        pub_key => 'demo',
+    my $pubnub = PubNub::PubSub->new(
+        pub_key => 'demo', # only required for publish
         sub_key => 'demo',
-        channel => 'some_unique_channel_perhaps',
-        messages => ['message1', 'message2'],
-        callback => sub {
+        channel => 'sandbox',
+        publish_callback => sub {
             my ($data) = @_;
 
             # sample $data
@@ -38,12 +34,14 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
             #     'proto' => 'HTTP/1.1'
             # };
         }
-    });
+    );
+
+    # publish
+    $pubnub->publish('message1', 'message2');
+    $pubnub->publish('message3', 'message4');
 
     # subscribe
     $pubnub->subscribe({
-        sub_key => 'demo',
-        channel => 'sandbox',
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -70,6 +68,26 @@ For a rough test:
 
 ## new
 
+- pub\_key
+
+    optional, required only for publish
+
+- sub\_key
+
+    required.
+
+- channel
+
+    required.
+
+- publish\_callback
+
+    optional. check every response on publish.
+
+- publish\_timeout
+
+    publish stream timeout. default is 1 hour = 3600
+
 - subscribe\_timeout
 
     subscribe stream timeout. default is 1 hour = 3600
@@ -83,8 +101,6 @@ For a rough test:
 subscribe channel to listen for the messages.
 
     $pubnub->subscribe({
-        sub_key => 'demo',
-        channel => 'sandbox',
         callback => sub {
             my (@messages) = @_;
             foreach my $msg (@messages) {
@@ -100,48 +116,14 @@ return 0 to stop
 
 publish messages to channel
 
-    $pubnub->publish({
-        pub_key => 'demo',
-        sub_key => 'demo',
-        channel => 'some_unique_channel_perhaps',
-        messages => ['message1', 'message2'],
-        callback => sub {
-            my ($data) = @_;
+    $pubnub->publish('message1', 'message2');
+    $pubnub->publish('message3', 'message4');
 
-            # sample $data
-            # {
-            #     'headers' => {
-            #                    'Connection' => 'keep-alive',
-            #                    'Content-Length' => 30,
-            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
-            #                    'Cache-Control' => 'no-cache',
-            #                    'Access-Control-Allow-Methods' => 'GET',
-            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
-            #                    'Access-Control-Allow-Origin' => '*'
-            #                  },
-            #     'body' => '[1,"Sent","14097510998021530"]',
-            #     'json' => [
-            #                 1,
-            #                 'Sent',
-            #                 '14097510998021530'
-            #               ],
-            #     'code' => 200,
-            #     'proto' => 'HTTP/1.1'
-            # };
-        }
-    });
-
-all __messages__ will be sent in one socket request.
-
-__callback__ will get all original response text which means it may have two or more response text in one read. it's not that useful at all.
+Note if you need callback, please pass it when do ->new with __publish\_callback__.
 
 ## history
 
-    my $res = $pubnub->history({
-        sub_key => 'demo',
-        channel => 'sandbox',
-        total => 100
-    });
+    my $res = $pubnub->history(100);
 
 get latest history.
 
@@ -188,7 +170,3 @@ YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
 CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
 CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-[![Build Status](https://travis-ci.org/binary-com/perl-pubnub-pubsub.svg?branch=master)](https://travis-ci.org/binary-com/perl-pubnub-pubsub)
-[![Coverage Status](https://coveralls.io/repos/binary-com/perl-pubnub-pubsub/badge.png?branch=master)](https://coveralls.io/r/binary-com/perl-pubnub-pubsub?branch=master)
-[![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
