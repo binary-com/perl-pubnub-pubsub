@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+
+0.04  2014-09-11 14:55:35 CST
         - API Changes. publish only accepts messages and all others should be passed into ->new
         - use one connection for all publish no matter how many times it's called
 
