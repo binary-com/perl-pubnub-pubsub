@@ -36,7 +36,7 @@ my @messages;
 foreach (1 .. $total_message) {
     push @messages, "message" . $_;;
 }
-$pubnub->publish(@messages);
+$pubnub->publish({ messages => \@messages });
 
 my $duration = time() - $start_time;
 print "Spent $duration.\n";

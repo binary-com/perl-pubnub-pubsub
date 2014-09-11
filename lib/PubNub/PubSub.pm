@@ -15,9 +15,6 @@ sub new {
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
-    $args{channel} or croak "channel is required.";
-    $args{sub_key} or croak "sub_key is required.";
-
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60; # for ua timeout
@@ -33,10 +30,23 @@ sub new {
 sub publish {
     my $self = shift;
 
-    $self->{pub_key} or croak "pub_key is required.";
+    my %params = @_ % 2 ? %{$_[0]} : @_;
 
-    my @messages = @_;
-    push @{ $self->{publish_queue} }, @messages; # queue
+    my $pub_key = $params{pub_key} || $self->{pub_key};
+    $pub_key or croak "pub_key is required.";
+    my $sub_key = $params{sub_key} || $self->{sub_key};
+    $sub_key or croak "sub_key is required.";
+    my $channel = $params{channel} || $self->{channel};
+    $channel or croak "channel is required.";
+    $params{messages} or croak "messages is required.";
+
+    my @messages = @{ $params{messages} };
+    foreach my $message (@messages) {
+        push @{ $self->{publish_queue} }, {
+            pub_key => $pub_key, sub_key => $sub_key, channel => $channel,
+            message => $message
+        };
+    }
 
     weaken $self;
     $self->__build_stream('__publish_stream', sub {
@@ -82,8 +92,8 @@ sub __write_publish {
         return;
     }
 
-    my $message = shift @$queue;
-    my ($pub_key, $sub_key, $channel) = ($self->{pub_key}, $self->{sub_key}, $self->{channel});
+    my $q = shift @$queue;
+    my ($pub_key, $sub_key, $channel, $message) = ($q->{pub_key}, $q->{sub_key}, $q->{channel}, $q->{message});
 
     my $r = join("\r\n",
         qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$message" HTTP/1.1~,
@@ -98,6 +108,11 @@ sub __write_publish {
 sub subscribe {
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
+
+    my $sub_key = $params{sub_key} || $self->{sub_key};
+    $sub_key or croak "sub_key is required.";
+    my $channel = $params{channel} || $self->{channel};
+    $channel or croak "channel is required.";
 
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
@@ -123,7 +138,7 @@ sub subscribe {
 
             # should never happen
             $self->{__subscribe_buf} = '';
-            my $r = $self->__build_subscribe_req($timetoken);
+            my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
             print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
             return $stream->write($r); # retry with old token
         }
@@ -143,13 +158,13 @@ sub subscribe {
         }
 
         # Write request
-        my $r = $self->__build_subscribe_req($timetoken);
+        my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
         print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
         $stream->write($r); # retry with old token
     }, $self->{subscribe_timeout});
 
     # Write request
-    my $r = $self->__build_subscribe_req($timetoken);
+    my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
     print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
     $stream->write($r); # retry with old token
 
@@ -157,9 +172,8 @@ sub subscribe {
 }
 
 sub __build_subscribe_req {
-    my ($self, $timetoken) = @_;
+    my ($self, $sub_key, $channel, $timetoken) = @_;
 
-    my ($sub_key, $channel) = ($self->{sub_key}, $self->{channel});
     return join("\r\n",
         "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
         'Host: pubsub.pubnub.com',
@@ -239,12 +253,20 @@ sub history {
     my $self = shift;
 
     my $total = 0;
+    my $sub_key = $self->{sub_key};
+    my $channel = $self->{channel};
+
     if (scalar(@_) == 1 and ref($_[0]) ne 'HASH') {
         $total = shift;
     } else {
         my %params = @_ % 2 ? %{$_[0]} : @_;
         $total = $params{total} || 100;
+        $sub_key = $params{sub_key} if $params{sub_key};
+        $channel = $params{channel} if $params{channel};
     }
+
+    $sub_key or croak "sub_key is required.";
+    $channel or croak "channel is required.";
 
     my $ua = $self->{ua};
     unless ($self->{ua}) {
@@ -255,7 +277,6 @@ sub history {
         $self->{ua} = $ua;
     }
 
-    my ($sub_key, $channel) = ($self->{sub_key}, $self->{channel});
     my $proto = ($self->{port} == 443) ? 'https://' : 'http://';
     my $tx = $ua->get($proto . $self->{host} . "/history/$sub_key/$channel/0/$total");
     return [$tx->error->{message}] unless $tx->success;
@@ -306,8 +327,13 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
     );
 
     # publish
-    $pubnub->publish('message1', 'message2');
-    $pubnub->publish('message3', 'message4');
+    $pubnub->publish({
+        messages => ['message1', 'message2']
+    });
+    $pubnub->publish({
+        channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
+        messages => ['message3', 'message4']
+    });
 
     # subscribe
     $pubnub->subscribe({
@@ -345,15 +371,15 @@ For a rough test:
 
 =item * pub_key
 
-optional, required only for publish
+optional, default pub_key for publish
 
 =item * sub_key
 
-required.
+optional, default sub_key for all methods
 
 =item * channel
 
-required.
+optional, default channel for all methods
 
 =item * publish_callback
 
@@ -393,8 +419,13 @@ return 0 to stop
 
 publish messages to channel
 
-    $pubnub->publish('message1', 'message2');
-    $pubnub->publish('message3', 'message4');
+    $pubnub->publish({
+        messages => ['message1', 'message2']
+    });
+    $pubnub->publish({
+        channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
+        messages => ['message3', 'message4']
+    });
 
 Note if you need callback, please pass it when do ->new with B<publish_callback>.
 

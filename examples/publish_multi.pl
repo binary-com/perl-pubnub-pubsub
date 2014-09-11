@@ -35,13 +35,13 @@ my @messages;
 foreach (1 .. $total_message) {
     push @messages, "message" . $_;;
 }
-$pubnub->publish(@messages);
+$pubnub->publish({ messages => \@messages });
 
 print "sending another $total_message messages\n";
 @messages = ();
 foreach ($total_message + 1 .. $total_message * 2) {
     push @messages, "message" . $_;;
 }
-$pubnub->publish(@messages);
+$pubnub->publish({ messages => \@messages });
 
 1;
