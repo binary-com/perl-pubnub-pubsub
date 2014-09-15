@@ -442,7 +442,7 @@ fetches historical messages of a channel
         count => 20,
         reverse => "false"
     });
-    # $history is [ ['message1', ...], timetoken1, timetoken2 ]
+    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
 
 for example, to fetch all the rows in history
 
