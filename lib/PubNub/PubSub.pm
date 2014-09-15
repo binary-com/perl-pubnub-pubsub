@@ -24,6 +24,9 @@ sub new {
     $args{json} ||= Mojo::JSON->new;
     $args{publish_queue} ||= [];
 
+    my $proto = ($args{port} == 443) ? 'https://' : 'http://';
+    $args{web_host} ||= $proto . $args{host};
+
     return bless \%args, $class;
 }
 
@@ -249,36 +252,32 @@ sub parse_response {
     return wantarray ? %data : \%data;
 }
 
-sub history {
+sub __ua {
     my $self = shift;
 
-    my $total = 0;
-    my $sub_key = $self->{sub_key};
-    my $channel = $self->{channel};
+    return $self->{ua} if exists $self->{ua};
 
-    if (scalar(@_) == 1 and ref($_[0]) ne 'HASH') {
-        $total = shift;
-    } else {
-        my %params = @_ % 2 ? %{$_[0]} : @_;
-        $total = $params{total} || 100;
-        $sub_key = $params{sub_key} if $params{sub_key};
-        $channel = $params{channel} if $params{channel};
-    }
+    my $ua = Mojo::UserAgent->new;
+    $ua->max_redirects(3);
+    $ua->inactivity_timeout($self->{timeout});
+    $ua->proxy->detect; # env proxy
+    $self->{ua} = $ua;
 
+    return $ua;
+}
+
+sub history {
+    my $self = shift;
+    my %params = @_ % 2 ? %{$_[0]} : @_;
+
+    my $sub_key = delete $params{sub_key} || $self->{sub_key};
     $sub_key or croak "sub_key is required.";
+    my $channel = delete $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
-    my $ua = $self->{ua};
-    unless ($self->{ua}) {
-        $ua = Mojo::UserAgent->new;
-        $ua->max_redirects(3);
-        $ua->inactivity_timeout($self->{timeout});
-        $ua->proxy->detect; # env proxy
-        $self->{ua} = $ua;
-    }
+    my $ua = $self->__ua;
 
-    my $proto = ($self->{port} == 443) ? 'https://' : 'http://';
-    my $tx = $ua->get($proto . $self->{host} . "/history/$sub_key/$channel/0/$total");
+    my $tx = $ua->get($self->{web_host} . "/v2/history/sub-key/$sub_key/channel/$channel" => form => \%params);
     return [$tx->error->{message}] unless $tx->success;
     return $tx->res->json;
 }
@@ -431,9 +430,56 @@ Note if you need callback, please pass it when do ->new with B<publish_callback>
 
 =head2 history
 
-    my $res = $pubnub->history(100);
+fetches historical messages of a channel
 
-get latest history.
+    my $history = $pubnub->history({
+        count => 20,
+        reverse => "false"
+    });
+    # $history is [ ['message1', ...], timetoken1, timetoken2 ]
+
+for example, to fetch all the rows in history
+
+    my $history = $pubnub->history({
+        reverse => "true",
+    });
+    while (1) {
+        print Dumper(\$history);
+        last unless @{$history->[0]}; # no messages
+        sleep 1;
+        $history = $pubnub->history({
+            reverse => "true",
+            start => $history->[2]
+        });
+    }
+
+=over 4
+
+=item * sub_key
+
+optional, default will use the one passed to ->new
+
+=item * channel
+
+optional, default will use the one passed to ->new
+
+=item * count
+
+Specifies the number of historical messages to return. The Default is 100.
+
+=item * reverse
+
+Setting to true will traverse the time line in reverse starting with the newest message first. Default is false. If both start and end arguments are provided, reverse is ignored and messages are returned starting with the newest message.
+
+=item * start
+
+Time token delimiting the start of time slice (exclusive) to pull messages from.
+
+=item * end
+
+Time token delimiting the end of time slice (inclusive) to pull messages from.
+
+=back
 
 =head1 AUTHOR
 
