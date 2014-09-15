@@ -2,10 +2,6 @@
 
 PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
-[![Build Status](https://travis-ci.org/binary-com/perl-pubnub-pubsub.svg?branch=master)](https://travis-ci.org/binary-com/perl-pubnub-pubsub)
-[![Coverage Status](https://coveralls.io/repos/binary-com/perl-pubnub-pubsub/badge.png?branch=master)](https://coveralls.io/r/binary-com/perl-pubnub-pubsub?branch=master)
-[![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
-
 # SYNOPSIS
 
     use PubNub::PubSub;
@@ -137,9 +133,52 @@ Note if you need callback, please pass it when do ->new with __publish\_callback
 
 ## history
 
-    my $res = $pubnub->history(100);
+fetches historical messages of a channel
 
-get latest history.
+    my $history = $pubnub->history({
+        count => 20,
+        reverse => "false"
+    });
+    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
+
+for example, to fetch all the rows in history
+
+    my $history = $pubnub->history({
+        reverse => "true",
+    });
+    while (1) {
+        print Dumper(\$history);
+        last unless @{$history->[0]}; # no messages
+        sleep 1;
+        $history = $pubnub->history({
+            reverse => "true",
+            start => $history->[2]
+        });
+    }
+
+- sub\_key
+
+    optional, default will use the one passed to ->new
+
+- channel
+
+    optional, default will use the one passed to ->new
+
+- count
+
+    Specifies the number of historical messages to return. The Default is 100.
+
+- reverse
+
+    Setting to true will traverse the time line in reverse starting with the newest message first. Default is false. If both start and end arguments are provided, reverse is ignored and messages are returned starting with the newest message.
+
+- start
+
+    Time token delimiting the start of time slice (exclusive) to pull messages from.
+
+- end
+
+    Time token delimiting the end of time slice (inclusive) to pull messages from.
 
 # AUTHOR
 

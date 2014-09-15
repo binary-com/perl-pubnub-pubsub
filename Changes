@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+
+0.06  2014-09-15 17:34:06 CST
         - rewrite history to support v2 http://www.pubnub.com/docs/javascript/api/reference.html#history
 
 0.05  2014-09-11 16:02:08 CST
