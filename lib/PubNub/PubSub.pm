@@ -268,6 +268,12 @@ sub __ua {
 
 sub history {
     my $self = shift;
+
+    if (scalar(@_) == 1 and ref($_[0]) ne 'HASH' and $_[0] =~ /^\d+$/) {
+        @_ = (count => $_[0]);
+        warn "->history(\$num) is deprecated and will be removed in next few releases.\n";
+    }
+
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
     my $sub_key = delete $params{sub_key} || $self->{sub_key};
