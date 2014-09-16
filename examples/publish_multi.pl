@@ -18,9 +18,9 @@ my $pubnub = PubNub::PubSub->new(
     sub_key  => $ENV{PUBNUB_SUB_KEY} || 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
     channel  => $ENV{PUBNUB_CHANNEL} || 'sandbox',
     publish_callback => sub {
-        my ($data) = @_;
+        my ($res) = @_;
 
-        print Dumper(\$data);
+        print Dumper(\$res->json);
 
         $got_message++;
         if ($got_message == $total_message or $got_message % 1000 == 0) {

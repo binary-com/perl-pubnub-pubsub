@@ -5,11 +5,8 @@ use 5.008_005;
 our $VERSION = '0.06';
 
 use Carp;
-use Mojo::IOLoop;
-use Socket qw/$CRLF/;
 use Mojo::JSON;
 use Mojo::UserAgent;
-use Scalar::Util qw(weaken);
 
 sub new {
     my $class = shift;
@@ -18,9 +15,8 @@ sub new {
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60; # for ua timeout
-    $args{publish_timeout} ||= 3600;
-    $args{subscribe_timeout} ||= 3600; # subcribe streaming timeout, default to 1 hours
     $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
+    $ENV{MOJO_USERAGENT_DEBUG} = $args{debug};
     $args{json} ||= Mojo::JSON->new;
     $args{publish_queue} ||= [];
 
@@ -28,6 +24,22 @@ sub new {
     $args{web_host} ||= $proto . $args{host};
 
     return bless \%args, $class;
+}
+
+sub __ua {
+    my $self = shift;
+
+    return $self->{ua} if exists $self->{ua};
+
+    my $ua = Mojo::UserAgent->new;
+    $ua->max_redirects(3);
+    $ua->inactivity_timeout($self->{timeout});
+    $ua->proxy->detect; # env proxy
+    $ua->cookie_jar(0);
+    $ua->max_connections(999);
+    $self->{ua} = $ua;
+
+    return $ua;
 }
 
 sub publish {
@@ -42,70 +54,18 @@ sub publish {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
     $params{messages} or croak "messages is required.";
+    my $callback = $params{callback} || $self->{publish_callback};
+
+    my $ua = $self->__ua;
 
     my @messages = @{ $params{messages} };
     foreach my $message (@messages) {
-        push @{ $self->{publish_queue} }, {
-            pub_key => $pub_key, sub_key => $sub_key, channel => $channel,
-            message => $message
-        };
-    }
-
-    weaken $self;
-    $self->__build_stream('__publish_stream', sub {
-        my ($stream, $bytes) = @_;
-
-        print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
-
-        my $callback = $self->{publish_callback};
+        # have to be blocking
+        my $tx = $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~);
         if ($callback) {
-            my @parts = split(/(HTTP\/1\.1 )/, $self->{__publish_buf} . $bytes);
-            shift @parts if $parts[0] eq '';
-
-            $self->{__publish_buf} = '';
-            while (@parts >= 2) {
-                my $one_resp = join('', shift @parts, shift @parts);
-                my %data = $self->parse_response($one_resp);
-                if ($data{error}) {
-                    $self->{__publish_buf} = $one_resp;
-                    $self->{__publish_buf} .= join('', @parts) if @parts;
-                    last;
-                } else {
-                    $callback->(\%data);
-                }
-            }
+            $callback->($tx->res);
         }
-
-        # Write request
-        $self->__write_publish();
-    }, $self->{publish_timeout});
-
-    # Write request
-    $self->__write_publish();
-
-    Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-}
-
-sub __write_publish {
-    my ($self) = @_;
-
-    my $queue = $self->{publish_queue};
-    unless (scalar(@$queue)) {
-        Mojo::IOLoop->stop;
-        return;
     }
-
-    my $q = shift @$queue;
-    my ($pub_key, $sub_key, $channel, $message) = ($q->{pub_key}, $q->{sub_key}, $q->{channel}, $q->{message});
-
-    my $r = join("\r\n",
-        qq~GET /publish/$pub_key/$sub_key/0/$channel/0/"$message" HTTP/1.1~,
-        'Host: pubsub.pubnub.com',
-        ''
-    ) . "\r\n";
-    print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
-    my $stream = $self->{'__publish_stream'};
-    $stream->write($r);
 }
 
 sub subscribe {
@@ -120,150 +80,21 @@ sub subscribe {
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
 
-    weaken $self;
-    my $stream = $self->__build_stream('__subscribe_stream', sub {
-        my ($stream, $bytes) = @_;
+    my $ua = $self->__ua;
 
-        my %data = $self->parse_response($self->{__subscribe_buf} . $bytes);
-        print STDERR "<<<<<<\n$bytes\n<<<<<<\n" if $self->{debug};
-
-        if ($data{code} == 403) {
-            print STDERR "403 Forbidden: " . $data{body} . "\n";
-            return;
-        }
-
-        ## incomplete data
-        if ($data{error}) {
-            if ($data{message} eq 'incomplete') { # wait a bit more for completed data
-                $self->{__subscribe_buf} .= $bytes;
-                return;
-            }
-
-            # should never happen
-            $self->{__subscribe_buf} = '';
-            my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
-            print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
-            return $stream->write($r); # retry with old token
-        }
-        $self->{__subscribe_buf} = '';
-
-        if ($data{json}) {
-            $timetoken = $data{json}->[1];
-        } else {
-            # should never happen
-            # die Dumper(\%data); use Data::Dumper;
-        }
-
-        ## parse bytes
-        my $rtn = $callback ? $callback->(@{ $data{json}->[0] }) : 1;
-        unless ($rtn) {
-            return Mojo::IOLoop->stop; # stop it
-        }
-
-        # Write request
-        my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
-        print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
-        $stream->write($r); # retry with old token
-    }, $self->{subscribe_timeout});
-
-    # Write request
-    my $r = $self->__build_subscribe_req($sub_key, $channel, $timetoken);
-    print STDERR ">>>>>>\n" . $r . "\n>>>>>>\n" if $self->{debug};
-    $stream->write($r); # retry with old token
-
-    Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-}
-
-sub __build_subscribe_req {
-    my ($self, $sub_key, $channel, $timetoken) = @_;
-
-    return join("\r\n",
-        "GET /subscribe/$sub_key/$channel/0/$timetoken HTTP/1.1",
-        'Host: pubsub.pubnub.com',
-        ''
-    ) . "\r\n";
-}
-
-sub __build_stream {
-    my ($self, $k, $callback, $timeout) = @_;
-
-    return $self->{$k} if $self->{$k}; # already built
-
-    print "Connecting stream for $k ...\n" if $self->{debug};
-    weaken $self;
-
-    my $delay = Mojo::IOLoop->delay;
-    my $end   = $delay->begin;
-    my $handle = undef;
-    my $client_id = Mojo::IOLoop->client({
-        address => $self->{host},
-        port => $self->{port},
-        timeout => $timeout
-    } => sub {
-        my ($loop, $err, $stream) = @_;
-        $handle = $stream->steal_handle;
-        $end->();
-    });
-    $delay->wait;
-
-    my $stream = Mojo::IOLoop::Stream->new($handle)->timeout($timeout);
-    Mojo::IOLoop->stream($stream);
-
-    $stream->on(read => sub { $callback->(@_); });
-    $self->{$k} = $stream;
-
-    return $stream;
-}
-
-sub parse_response {
-    my ($self, $resp) = @_;
-
-    my $neck_pos = index($resp, "${CRLF}${CRLF}");
-    my $body = substr($resp, $neck_pos+4);
-    my $head = substr($resp, 0, $neck_pos);
-
-    my $proto = substr($head, 0, 8);
-    my $status_code = substr($head, 9, 3);
-    substr($head, 0, index($head, $CRLF) + 2, ""); # 2 = length($CRLF)
-
-    my $header;
-    for (split /${CRLF}/o, $head) {
-        my ($key, $value) = split /: /, $_, 2;
-        $header->{$key} = $value;
+    my $tx = $ua->get($self->{web_host} . "/subscribe/$sub_key/$channel/0/$timetoken");
+    unless ($tx->success) {
+        # for example $tx->error->{message} =~ /Inactivity timeout/
+        print "RECONNECTING...\n" if $self->{debug};
+        return $self->subscribe(%params, timetoken => $timetoken);
     }
+    my $json = $tx->res->json;
 
-    my %data = (
-        proto => $proto,
-        code  => $status_code,
-        headers => $header,
-        body   => $body,
-    );
+    my $rtn = $callback ? $callback->(@{ $json->[0] }) : 1;
+    return unless $rtn;
 
-    if ($data{code} == 200 and length($body) != $data{headers}{'Content-Length'}) { # data is incompleted
-        my $type = length($body) < $data{headers}{'Content-Length'} ? 'incomplete' : 'overflooded';
-        %data = (error => 1, message => 'incomplete');
-        return wantarray ? %data : \%data;
-    }
-
-    if ($data{code} == 200 and $data{headers}->{'Content-Type'} =~ 'javascript') {
-        $data{json} = $self->{json}->decode($body);
-    }
-
-    return wantarray ? %data : \%data;
-}
-
-sub __ua {
-    my $self = shift;
-
-    return $self->{ua} if exists $self->{ua};
-
-    my $ua = Mojo::UserAgent->new;
-    $ua->max_redirects(3);
-    $ua->inactivity_timeout($self->{timeout});
-    $ua->proxy->detect; # env proxy
-    $self->{ua} = $ua;
-
-    return $ua;
+    $timetoken = $json->[1];
+    return $self->subscribe(%params, timetoken => $timetoken);
 }
 
 sub history {
@@ -305,35 +136,18 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
         pub_key => 'demo', # only required for publish
         sub_key => 'demo',
         channel => 'sandbox',
-        publish_callback => sub {
-            my ($data) = @_;
-
-            # sample $data
-            # {
-            #     'headers' => {
-            #                    'Connection' => 'keep-alive',
-            #                    'Content-Length' => 30,
-            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
-            #                    'Cache-Control' => 'no-cache',
-            #                    'Access-Control-Allow-Methods' => 'GET',
-            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
-            #                    'Access-Control-Allow-Origin' => '*'
-            #                  },
-            #     'body' => '[1,"Sent","14097510998021530"]',
-            #     'json' => [
-            #                 1,
-            #                 'Sent',
-            #                 '14097510998021530'
-            #               ],
-            #     'code' => 200,
-            #     'proto' => 'HTTP/1.1'
-            # };
-        }
     );
 
     # publish
     $pubnub->publish({
-        messages => ['message1', 'message2']
+        messages => ['message1', 'message2'],
+        callback => sub {
+            my ($res) = @_;
+
+            # $res is a L<Mojo::Message::Response>
+            say $res->code; # 200
+            say Dumper(\$res->json); # [1,"Sent","14108733777591385"]
+        }
     });
     $pubnub->publish({
         channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
@@ -354,7 +168,7 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
 =head1 DESCRIPTION
 
-PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on L<Mojo::IOLoop>
+PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on L<Mojo::UserAgent>
 
 perl clone of L<https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining>
 
@@ -388,15 +202,7 @@ optional, default channel for all methods
 
 =item * publish_callback
 
-optional. check every response on publish.
-
-=item * publish_timeout
-
-publish stream timeout. default is 1 hour = 3600
-
-=item * subscribe_timeout
-
-subscribe stream timeout. default is 1 hour = 3600
+optional. default callback for publish
 
 =item * debug
 
@@ -425,7 +231,14 @@ return 0 to stop
 publish messages to channel
 
     $pubnub->publish({
-        messages => ['message1', 'message2']
+        messages => ['message1', 'message2'],
+        callback => sub {
+            my ($res) = @_;
+
+            # $res is a L<Mojo::Message::Response>
+            say $res->code; # 200
+            say Dumper(\$res->json); # [1,"Sent","14108733777591385"]
+        }
     });
     $pubnub->publish({
         channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
@@ -437,27 +250,6 @@ Note if you need callback, please pass it when do ->new with B<publish_callback>
 =head2 history
 
 fetches historical messages of a channel
-
-    my $history = $pubnub->history({
-        count => 20,
-        reverse => "false"
-    });
-    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
-
-for example, to fetch all the rows in history
-
-    my $history = $pubnub->history({
-        reverse => "true",
-    });
-    while (1) {
-        print Dumper(\$history);
-        last unless @{$history->[0]}; # no messages
-        sleep 1;
-        $history = $pubnub->history({
-            reverse => "true",
-            start => $history->[2]
-        });
-    }
 
 =over 4
 
@@ -486,6 +278,27 @@ Time token delimiting the start of time slice (exclusive) to pull messages from.
 Time token delimiting the end of time slice (inclusive) to pull messages from.
 
 =back
+
+    my $history = $pubnub->history({
+        count => 20,
+        reverse => "false"
+    });
+    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
+
+for example, to fetch all the rows in history
+
+    my $history = $pubnub->history({
+        reverse => "true",
+    });
+    while (1) {
+        print Dumper(\$history);
+        last unless @{$history->[0]}; # no messages
+        sleep 1;
+        $history = $pubnub->history({
+            reverse => "true",
+            start => $history->[2]
+        });
+    }
 
 =head1 AUTHOR
 
