@@ -115,7 +115,7 @@ publish messages to channel
         messages => ['message3', 'message4']
     });
 
-Note if you need callback, please pass it when do ->new with __publish\_callback__.
+Note if you need shared callback, please pass it when do ->new with __publish\_callback__.
 
 ## history
 

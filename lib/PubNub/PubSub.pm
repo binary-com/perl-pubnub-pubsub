@@ -245,7 +245,7 @@ publish messages to channel
         messages => ['message3', 'message4']
     });
 
-Note if you need callback, please pass it when do ->new with B<publish_callback>.
+Note if you need shared callback, please pass it when do ->new with B<publish_callback>.
 
 =head2 history
 
