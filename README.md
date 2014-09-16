@@ -2,10 +2,6 @@
 
 PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
-[![Build Status](https://travis-ci.org/binary-com/perl-pubnub-pubsub.svg?branch=master)](https://travis-ci.org/binary-com/perl-pubnub-pubsub)
-[![Coverage Status](https://coveralls.io/repos/binary-com/perl-pubnub-pubsub/badge.png?branch=master)](https://coveralls.io/r/binary-com/perl-pubnub-pubsub?branch=master)
-[![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
-
 # SYNOPSIS
 
     use PubNub::PubSub;
@@ -14,35 +10,18 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
         pub_key => 'demo', # only required for publish
         sub_key => 'demo',
         channel => 'sandbox',
-        publish_callback => sub {
-            my ($data) = @_;
-
-            # sample $data
-            # {
-            #     'headers' => {
-            #                    'Connection' => 'keep-alive',
-            #                    'Content-Length' => 30,
-            #                    'Date' => 'Wed, 03 Sep 2014 13:31:39 GMT',
-            #                    'Cache-Control' => 'no-cache',
-            #                    'Access-Control-Allow-Methods' => 'GET',
-            #                    'Content-Type' => 'text/javascript; charset="UTF-8"',
-            #                    'Access-Control-Allow-Origin' => '*'
-            #                  },
-            #     'body' => '[1,"Sent","14097510998021530"]',
-            #     'json' => [
-            #                 1,
-            #                 'Sent',
-            #                 '14097510998021530'
-            #               ],
-            #     'code' => 200,
-            #     'proto' => 'HTTP/1.1'
-            # };
-        }
     );
 
     # publish
     $pubnub->publish({
-        messages => ['message1', 'message2']
+        messages => ['message1', 'message2'],
+        callback => sub {
+            my ($res) = @_;
+
+            # $res is a L<Mojo::Message::Response>
+            say $res->code; # 200
+            say Dumper(\$res->json); # [1,"Sent","14108733777591385"]
+        }
     });
     $pubnub->publish({
         channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
@@ -64,7 +43,7 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
 # DESCRIPTION
 
-PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on [Mojo::IOLoop](https://metacpan.org/pod/Mojo::IOLoop)
+PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent)
 
 perl clone of [https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining](https://gist.github.com/stephenlb/9496723#pubnub-http-pipelining)
 
@@ -91,15 +70,7 @@ For a rough test:
 
 - publish\_callback
 
-    optional. check every response on publish.
-
-- publish\_timeout
-
-    publish stream timeout. default is 1 hour = 3600
-
-- subscribe\_timeout
-
-    subscribe stream timeout. default is 1 hour = 3600
+    optional. default callback for publish
 
 - debug
 
@@ -126,7 +97,14 @@ return 0 to stop
 publish messages to channel
 
     $pubnub->publish({
-        messages => ['message1', 'message2']
+        messages => ['message1', 'message2'],
+        callback => sub {
+            my ($res) = @_;
+
+            # $res is a L<Mojo::Message::Response>
+            say $res->code; # 200
+            say Dumper(\$res->json); # [1,"Sent","14108733777591385"]
+        }
     });
     $pubnub->publish({
         channel  => 'sandbox2', # optional, if not applied, the one in ->new will be used.
@@ -138,27 +116,6 @@ Note if you need callback, please pass it when do ->new with __publish\_callback
 ## history
 
 fetches historical messages of a channel
-
-    my $history = $pubnub->history({
-        count => 20,
-        reverse => "false"
-    });
-    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
-
-for example, to fetch all the rows in history
-
-    my $history = $pubnub->history({
-        reverse => "true",
-    });
-    while (1) {
-        print Dumper(\$history);
-        last unless @{$history->[0]}; # no messages
-        sleep 1;
-        $history = $pubnub->history({
-            reverse => "true",
-            start => $history->[2]
-        });
-    }
 
 - sub\_key
 
@@ -183,6 +140,27 @@ for example, to fetch all the rows in history
 - end
 
     Time token delimiting the end of time slice (inclusive) to pull messages from.
+
+    my $history = $pubnub->history({
+        count => 20,
+        reverse => "false"
+    });
+    # $history is [["message1", "message2", ... ],"Start Time Token","End Time Token"]
+
+for example, to fetch all the rows in history
+
+    my $history = $pubnub->history({
+        reverse => "true",
+    });
+    while (1) {
+        print Dumper(\$history);
+        last unless @{$history->[0]}; # no messages
+        sleep 1;
+        $history = $pubnub->history({
+            reverse => "true",
+            start => $history->[2]
+        });
+    }
 
 # AUTHOR
 
