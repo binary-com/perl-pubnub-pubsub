@@ -145,6 +145,8 @@ fetches historical messages of a channel
 
     Time token delimiting the end of time slice (inclusive) to pull messages from.
 
+Sample code:
+
     my $history = $pubnub->history({
         count => 20,
         reverse => "false"

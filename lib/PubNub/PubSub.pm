@@ -279,6 +279,8 @@ Time token delimiting the end of time slice (inclusive) to pull messages from.
 
 =back
 
+Sample code:
+
     my $history = $pubnub->history({
         count => 20,
         reverse => "false"
