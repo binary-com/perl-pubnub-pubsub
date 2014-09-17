@@ -36,7 +36,7 @@ sub __ua {
     $ua->inactivity_timeout($self->{timeout});
     $ua->proxy->detect; # env proxy
     $ua->cookie_jar(0);
-    $ua->max_connections(1);
+    $ua->max_connections(100);
     $self->{ua} = $ua;
 
     return $ua;
