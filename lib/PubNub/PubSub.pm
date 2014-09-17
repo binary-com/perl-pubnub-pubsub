@@ -58,9 +58,14 @@ sub publish {
 
     my $ua = $self->__ua;
 
+    my @steps;
     foreach my $message (@{$params{messages}}) {
-        my $tx = $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~, sub { $callback->($_[1]->res) if $callback });
+        push @steps, sub {
+            my $delay = shift;
+            $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~ => $delay->begin);
+        };
     }
+    Mojo::IOLoop->delay(@steps)->wait;
 }
 
 sub subscribe {
