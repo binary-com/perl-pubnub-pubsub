@@ -62,7 +62,11 @@ sub publish {
     foreach my $message (@{$params{messages}}) {
         push @steps, sub {
             my $delay = shift;
-            $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~ => $delay->begin);
+            my $end = $delay->begin;
+            $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~ => sub {
+                $callback->($_[1]->res) if $callback;
+                $end->();
+            });
         };
     }
     Mojo::IOLoop->delay(@steps)->wait;
