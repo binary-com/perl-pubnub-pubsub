@@ -36,7 +36,7 @@ sub __ua {
     $ua->inactivity_timeout($self->{timeout});
     $ua->proxy->detect; # env proxy
     $ua->cookie_jar(0);
-    $ua->max_connections(999);
+    $ua->max_connections(1);
     $self->{ua} = $ua;
 
     return $ua;
@@ -58,13 +58,8 @@ sub publish {
 
     my $ua = $self->__ua;
 
-    my @messages = @{ $params{messages} };
-    foreach my $message (@messages) {
-        # have to be blocking
-        my $tx = $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~);
-        if ($callback) {
-            $callback->($tx->res);
-        }
+    foreach my $message (@{$params{messages}}) {
+        my $tx = $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~, sub { $callback->($_[1]->res) if $callback });
     }
 }
 
