@@ -306,6 +306,10 @@ for example, to fetch all the rows in history
         });
     }
 
+=head1 GITHUB
+
+L<https://github.com/binary-com/perl-pubnub-pubsub>
+
 =head1 AUTHOR
 
 Binary.com E<lt>fayland@gmail.comE<gt>
