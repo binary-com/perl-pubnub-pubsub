@@ -1,10 +1,10 @@
-# NAME
-
-PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
-
 [![Build Status](https://travis-ci.org/binary-com/perl-pubnub-pubsub.svg?branch=master)](https://travis-ci.org/binary-com/perl-pubnub-pubsub)
 [![Coverage Status](https://coveralls.io/repos/binary-com/perl-pubnub-pubsub/badge.png?branch=master)](https://coveralls.io/r/binary-com/perl-pubnub-pubsub?branch=master)
 [![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
+
+# NAME
+
+PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
 # SYNOPSIS
 
@@ -43,8 +43,6 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
         }
     });
 
-
-
 # DESCRIPTION
 
 PubNub::PubSub is Perl library for rapid publishing of messages on PubNub.com based on [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent)
@@ -78,7 +76,7 @@ For a rough test:
 
 - debug
 
-    print network outgoing/incoming messages to STDERR
+    set ENV MOJO\_USERAGENT\_DEBUG to debug
 
 ## subscribe
 
@@ -115,7 +113,57 @@ publish messages to channel
         messages => ['message3', 'message4']
     });
 
-Note if you need shared callback, please pass it when do ->new with __publish\_callback__.
+Note if you need shared callback, please pass it when do ->new with **publish\_callback**.
+
+new Parameters specifically for **Publish V2 ONLY**
+
+- ortt - Origination TimeToken where "r" = DOMAIN and "t" = TIMETOKEN
+- meta - any JSON payload - intended as a safe and unencrypted payload
+- ear - Eat At Read (read once)
+- seqn - Sequence Number - for Guaranteed Delivery/Ordering
+
+We'll first try to read from **messages**, if not specified, fall back to the same level as messages. eg:
+
+    $pubnub->publish({
+        messages => [
+            {
+                message => 'test message.',
+                ortt => {
+                    "r" => 13,
+                    "t" => "13978641831137500"
+                },
+                meta => {
+                    "stuff" => []
+                },
+                ear  => 'True',
+                seqn => 12345,
+            },
+            {
+                ...
+            }
+        ]
+    });
+
+    ## if you have common part, you can specified as the same level as messages
+    $pubnub->publish({
+        messages => [
+            {
+                message => 'test message.',
+                ortt => {
+                    "r" => 13,
+                    "t" => "13978641831137500"
+                },
+                seqn => 12345,
+            },
+            {
+                ...
+            }
+        ],
+        meta => {
+            "stuff" => []
+        },
+        ear  => 'True',
+    });
 
 ## history
 
@@ -168,6 +216,10 @@ for example, to fetch all the rows in history
         });
     }
 
+# GITHUB
+
+[https://github.com/binary-com/perl-pubnub-pubsub](https://github.com/binary-com/perl-pubnub-pubsub)
+
 # AUTHOR
 
 Binary.com <fayland@gmail.com>
@@ -180,7 +232,7 @@ This program is free software; you can redistribute it and/or modify it
 under the terms of the the Artistic License (2.0). You may obtain a
 copy of the full license at:
 
-[http://www.perlfoundation.org/artistic_license_2_0](http://www.perlfoundation.org/artistic_license_2_0)
+[http://www.perlfoundation.org/artistic\_license\_2\_0](http://www.perlfoundation.org/artistic_license_2_0)
 
 Any use, modification, and distribution of the Standard or Modified
 Versions is governed by this Artistic License. By using, modifying or

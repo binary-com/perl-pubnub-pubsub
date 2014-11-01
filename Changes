@@ -1,6 +1,7 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+        - add new params for Publish V2
 
 0.07  2014-09-16 21:24:39 CST
         - all use LWP::UserAgent, publish callback API changes.
