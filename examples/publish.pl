@@ -17,13 +17,12 @@ my $pubnub = PubNub::PubSub->new(
     pub_key  => $ENV{PUBNUB_PUB_KEY} || 'pub-c-5b5d836f-143b-48d2-882f-659e87b6c321',
     sub_key  => $ENV{PUBNUB_SUB_KEY} || 'sub-c-a66b65f2-2d96-11e4-875c-02ee2ddab7fe',
     channel  => $ENV{PUBNUB_CHANNEL} || 'sandbox',
-    # debug    => 1,
 );
 
 print "Total sending $total_message\n";
 my @messages;
 foreach (1 .. $total_message) {
-    push @messages, "message" . $_;;
+    push @messages, "message" . $_;
 }
 $pubnub->publish({
     messages => \@messages,

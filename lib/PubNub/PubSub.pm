@@ -1,12 +1,14 @@
 package PubNub::PubSub;
 
 use strict;
-use 5.008_005;
+use v5.10;
 our $VERSION = '0.07';
 
 use Carp;
-use Mojo::JSON;
+use Mojo::JSON qw/encode_json/;
 use Mojo::UserAgent;
+use Mojo::URL;
+use Mojo::Util qw/url_escape/;
 
 sub new {
     my $class = shift;
@@ -15,9 +17,6 @@ sub new {
     $args{host} ||= 'pubsub.pubnub.com';
     $args{port} ||= 80;
     $args{timeout} ||= 60; # for ua timeout
-    $args{debug} ||= $ENV{PUBNUB_DEBUG} || 0;
-    $ENV{MOJO_USERAGENT_DEBUG} = $args{debug};
-    $args{json} ||= Mojo::JSON->new;
     $args{publish_queue} ||= [];
 
     my $proto = ($args{port} == 443) ? 'https://' : 'http://';
@@ -46,6 +45,27 @@ sub publish {
     my $self = shift;
 
     my %params = @_ % 2 ? %{$_[0]} : @_;
+    my $callback = $params{callback} || $self->{publish_callback};
+
+    my @urls = $self->__construct_publish_urls(%params);
+
+    my @steps;
+    my $ua = $self->__ua;
+    foreach my $url (@urls) {
+        push @steps, sub {
+            my $delay = shift;
+            my $end = $delay->begin;
+            $ua->get($url => sub {
+                $callback->($_[1]->res) if $callback;
+                $end->();
+            });
+        };
+    }
+    Mojo::IOLoop->delay(@steps)->wait;
+}
+
+sub __construct_publish_urls {
+    my ($self, %params) = @_;
 
     my $pub_key = $params{pub_key} || $self->{pub_key};
     $pub_key or croak "pub_key is required.";
@@ -54,22 +74,24 @@ sub publish {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
     $params{messages} or croak "messages is required.";
-    my $callback = $params{callback} || $self->{publish_callback};
 
-    my $ua = $self->__ua;
-
-    my @steps;
+    my @urls;
     foreach my $message (@{$params{messages}}) {
-        push @steps, sub {
-            my $delay = shift;
-            my $end = $delay->begin;
-            $ua->get($self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$message"~ => sub {
-                $callback->($_[1]->res) if $callback;
-                $end->();
-            });
-        };
+        $message = { message => $message } unless ref($message) eq 'HASH';
+        croak 'message is required in params *messages*' unless defined $message->{message};
+        my $msg = $message->{message};
+        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$msg"~ );
+        my %query;
+        foreach my $k ('ortt', 'meta', 'ear', 'seqn') {
+            my $v = $message->{$k} // $params{$k};
+            next unless defined $v;
+            $query{$k} = ref($v) ? encode_json($v) : $v;
+        }
+        $uri->query(\%query) if %query;
+        push @urls, $uri->to_string;
     }
-    Mojo::IOLoop->delay(@steps)->wait;
+
+    return @urls;
 }
 
 sub subscribe {
@@ -89,7 +111,6 @@ sub subscribe {
     my $tx = $ua->get($self->{web_host} . "/subscribe/$sub_key/$channel/0/$timetoken");
     unless ($tx->success) {
         # for example $tx->error->{message} =~ /Inactivity timeout/
-        print "RECONNECTING...\n" if $self->{debug};
         return $self->subscribe(%params, timetoken => $timetoken);
     }
     my $json = $tx->res->json;
@@ -210,7 +231,7 @@ optional. default callback for publish
 
 =item * debug
 
-print network outgoing/incoming messages to STDERR
+set ENV MOJO_USERAGENT_DEBUG to debug
 
 =back
 
@@ -250,6 +271,63 @@ publish messages to channel
     });
 
 Note if you need shared callback, please pass it when do ->new with B<publish_callback>.
+
+new Parameters specifically for B<Publish V2 ONLY>
+
+=over 4
+
+=item * ortt - Origination TimeToken where "r" = DOMAIN and "t" = TIMETOKEN
+
+=item * meta - any JSON payload - intended as a safe and unencrypted payload
+
+=item * ear - Eat At Read (read once)
+
+=item * seqn - Sequence Number - for Guaranteed Delivery/Ordering
+
+=back
+
+We'll first try to read from B<messages>, if not specified, fall back to the same level as messages. eg:
+
+    $pubnub->publish({
+        messages => [
+            {
+                message => 'test message.',
+                ortt => {
+                    "r" => 13,
+                    "t" => "13978641831137500"
+                },
+                meta => {
+                    "stuff" => []
+                },
+                ear  => 'True',
+                seqn => 12345,
+            },
+            {
+                ...
+            }
+        ]
+    });
+
+    ## if you have common part, you can specified as the same level as messages
+    $pubnub->publish({
+        messages => [
+            {
+                message => 'test message.',
+                ortt => {
+                    "r" => 13,
+                    "t" => "13978641831137500"
+                },
+                seqn => 12345,
+            },
+            {
+                ...
+            }
+        ],
+        meta => {
+            "stuff" => []
+        },
+        ear  => 'True',
+    });
 
 =head2 history
 
