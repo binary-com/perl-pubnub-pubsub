@@ -15,10 +15,10 @@ my %WriteMakefileArgs = (
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
   },
-  "DISTNAME" => "pubnub-pubsub",
+  "DISTNAME" => "PubNub-PubSub",
   "EXE_FILES" => [],
   "LICENSE" => "apache",
-  "NAME" => "pubnub::pubsub",
+  "NAME" => "PubNub::PubSub",
   "PREREQ_PM" => {
     "Mojolicious" => "5.40"
   },

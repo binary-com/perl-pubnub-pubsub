@@ -1,6 +1,8 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+
+0.08  2014-11-01 12:18:59 CST
         - add new params for Publish V2
 
 0.07  2014-09-16 21:24:39 CST

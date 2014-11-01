@@ -2,7 +2,7 @@ package PubNub::PubSub;
 
 use strict;
 use v5.10;
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 use Carp;
 use Mojo::JSON qw/encode_json/;
