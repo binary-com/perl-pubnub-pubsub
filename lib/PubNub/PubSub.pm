@@ -384,6 +384,16 @@ for example, to fetch all the rows in history
         });
     }
 
+=head1 JSON USAGE
+
+This module effectively runs a Mojolicious application in the background.  For
+those parts of JSON which do not have a hard Perl equivalent, such as booleans,
+the Mojo::JSON module's semantics work.  This means that JSON bools are 
+handled as references to scalar values 0 and 1 (i.e. \0 for false and \1 for 
+true).
+
+This has changed since 0.08, where True and False were used.
+
 =head1 GITHUB
 
 L<https://github.com/binary-com/perl-pubnub-pubsub>
