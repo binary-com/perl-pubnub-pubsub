@@ -3,6 +3,9 @@ package PubNub::PubSub::Message;
 use Carp;
 use JSON;
 
+use strict;
+use warnings;
+
 sub new {
     my $pkg  = shift;
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
@@ -23,6 +26,7 @@ sub from_json {
 }
 
 sub json {
+    my $self = shift;
     return qq|"$self->{payload}"| unless ref $self->{payload};
     return JSON->new->convert_blessed->allow_nonref->encode($self->{payload});
 }
