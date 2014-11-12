@@ -3,6 +3,7 @@
 [![Gitter chat](https://badges.gitter.im/binary-com/perl-pubnub-pubsub.png)](https://gitter.im/binary-com/perl-pubnub-pubsub)
 
 # NAME
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/binary-com/perl-pubnub-pubsub?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 
