@@ -20,7 +20,7 @@ sub payload {
     return $self->{payload};
 }
 
-sub from_json {
+sub from_msg {
     my ($self, $json) = @_;
     return "$self"->new(payload => JSON->new->convert_blessed->decode($json));
 }
