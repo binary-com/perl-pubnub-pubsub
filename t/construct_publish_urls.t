@@ -4,6 +4,8 @@ use PubNub::PubSub;
 use Mojo::URL;
 use Mojo::JSON qw/decode_json/;
 
+use Carp::Always;
+
 my $pubnub = PubNub::PubSub->new(
     pub_key  => 'demo',
     sub_key  => 'demo',

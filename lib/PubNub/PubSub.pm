@@ -10,6 +10,9 @@ use Mojo::UserAgent;
 use Mojo::URL;
 use Mojo::Util qw/url_escape/;
 
+use PubNub::PubSub::Message;
+use Data::Dumper;
+
 sub new {
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
@@ -49,18 +52,20 @@ sub publish {
 
     my @urls = $self->__construct_publish_urls(%params);
 
-    my @steps;
     my $ua = $self->__ua;
-    foreach my $url (@urls) {
-        push @steps, sub {
-            my $delay = shift;
-            my $end = $delay->begin;
-            $ua->get($url => sub {
-                $callback->($_[1]->res) if $callback;
-                $end->();
-            });
-        };
-    }
+
+    my @steps = map {
+             my $url = $_;
+             sub {
+                 my $delay = shift;
+                 my $end = $delay->begin;
+                 $ua->get($url => sub {
+                    $callback->($_[1]->res) if $callback;
+                    $end->();
+                  });
+             }
+    } @urls;
+
     Mojo::IOLoop->delay(@steps)->wait;
 }
 
@@ -75,23 +80,19 @@ sub __construct_publish_urls {
     $channel or croak "channel is required.";
     $params{messages} or croak "messages is required.";
 
-    my @urls;
-    foreach my $message (@{$params{messages}}) {
-        $message = { message => $message } unless ref($message) eq 'HASH';
-        croak 'message is required in params *messages*' unless defined $message->{message};
-        my $msg = $message->{message};
-        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$msg"~ );
-        my %query;
-        foreach my $k ('ortt', 'meta', 'ear', 'seqn') {
-            my $v = $message->{$k} // $params{$k};
-            next unless defined $v;
-            $query{$k} = ref($v) ? encode_json($v) : $v;
-        }
-        $uri->query(\%query) if %query;
-        push @urls, $uri->to_string;
-    }
+    return map {
+        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . $_->json );
+        $uri->query($_->query_params);
+        $uri->to_string;
+    } map { # backwards compatibility
+        ref $_ ? PubNub::PubSub::Message->new($_) : message($_);
+    } @{$params{messages}};
+}
 
-    return @urls;
+sub message {
+    my $message = shift;
+    $message = shift unless (ref $message or ! "$message"->isa(__PACKAGE__));
+    return PubNub::PubSub::Message->new(payload => $message);
 }
 
 sub subscribe {
