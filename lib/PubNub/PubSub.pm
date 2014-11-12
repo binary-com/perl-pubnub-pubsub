@@ -90,8 +90,7 @@ sub __construct_publish_urls {
 }
 
 sub message {
-    my $message = shift;
-    $message = shift unless (ref $message or ! "$message"->isa(__PACKAGE__));
+    my $message = pop; # safe for -> method calls
     return PubNub::PubSub::Message->new(payload => $message);
 }
 
