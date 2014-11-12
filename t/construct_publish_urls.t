@@ -95,7 +95,7 @@ is_deeply decode_json($uri->query->param('ortt')), {
 is scalar(@urls), 2;
 $uri = Mojo::URL->new($urls[0]);
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test3%22';
-is $uri->query->param('ear'), undef;
+is $uri->query->param('ear'), '"True"';
 is $uri->query->param('seqn'), '12345';
 is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
 is_deeply decode_json($uri->query->param('ortt')), {
