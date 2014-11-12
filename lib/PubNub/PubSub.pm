@@ -82,7 +82,7 @@ sub __construct_publish_urls {
 
     return map {
         my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . $_->json );
-        $uri->query($_->query_params);
+        $uri->query($_->query_params(\%params));
         $uri->to_string;
     } map { # backwards compatibility
         ref $_ ? PubNub::PubSub::Message->new($_) : message($_);

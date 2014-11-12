@@ -33,9 +33,12 @@ sub json {
 
 sub query_params {
     my $self = shift;
+    my $merge = shift;
     return { map {
-        defined $self->{$_}                                         ?
-            ($_ => JSON->new->convert_blessed->allow_nonref->encode($self->{$_})) :
+        my $var = $self->{$_};
+        $var = $merge->{$_} unless defined $var;
+        defined $var ?
+            ($_ => JSON->new->convert_blessed->allow_nonref->encode($var)) :
             ();
     } qw(ortt meta ear seqn) };
 }
