@@ -1,7 +1,7 @@
 package PubNub::PubSub::Message;
 
 use Carp;
-use JSON;
+use Mojo::JSON qw(encode_json decode_json);
 
 use strict;
 use warnings;
@@ -22,13 +22,12 @@ sub payload {
 
 sub from_msg {
     my ($self, $json) = @_;
-    return "$self"->new(payload => JSON->new->convert_blessed->decode($json));
+    return "$self"->new(payload => decode_json($json));
 }
 
 sub json {
     my $self = shift;
-    return qq|"$self->{payload}"| unless ref $self->{payload};
-    return JSON->new->convert_blessed->allow_nonref->encode($self->{payload});
+    return encode_json($self->{payload});
 }
 
 sub query_params {
@@ -38,7 +37,7 @@ sub query_params {
         my $var = $self->{$_};
         $var = $merge->{$_} unless defined $var;
         defined $var ?
-            ($_ => JSON->new->convert_blessed->allow_nonref->encode($var)) :
+            ($_ => encode_json($var)) :
             ();
     } qw(ortt meta ear seqn) };
 }
