@@ -2,7 +2,7 @@ package PubNub::PubSub;
 
 use strict;
 use v5.10;
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use Carp;
 use Mojo::JSON qw/encode_json/;
@@ -80,8 +80,12 @@ sub __construct_publish_urls {
     $params{messages} or croak "messages is required.";
 
     return map {
-        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . $_->json );
+        warn $_->json;
+        my $json = $_->json;
+        $json =~ s/"/\\"/g;
+        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . url_escape($json) );
         $uri->query($_->query_params(\%params));
+        warn $uri->to_string;
         $uri->to_string;
     } map { # backwards compatibility
         ref $_ ? PubNub::PubSub::Message->new($_) : message($_);
