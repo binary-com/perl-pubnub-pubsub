@@ -11,7 +11,6 @@ use Mojo::URL;
 use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
-use Data::Dumper;
 
 sub new {
     my $class = shift;
