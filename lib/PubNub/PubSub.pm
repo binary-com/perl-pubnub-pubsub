@@ -82,7 +82,6 @@ sub __construct_publish_urls {
     return map {
         warn $_->json;
         my $json = $_->json;
-        $json =~ s/"/\\"/g;
         my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . url_escape($json) );
         $uri->query($_->query_params(\%params));
         warn $uri->to_string;
