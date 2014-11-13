@@ -2,13 +2,15 @@ package PubNub::PubSub;
 
 use strict;
 use v5.10;
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use Carp;
 use Mojo::JSON qw/encode_json/;
 use Mojo::UserAgent;
 use Mojo::URL;
 use Mojo::Util qw/url_escape/;
+
+use PubNub::PubSub::Message;
 
 sub new {
     my $class = shift;
@@ -49,18 +51,20 @@ sub publish {
 
     my @urls = $self->__construct_publish_urls(%params);
 
-    my @steps;
     my $ua = $self->__ua;
-    foreach my $url (@urls) {
-        push @steps, sub {
-            my $delay = shift;
-            my $end = $delay->begin;
-            $ua->get($url => sub {
-                $callback->($_[1]->res) if $callback;
-                $end->();
-            });
-        };
-    }
+
+    my @steps = map {
+             my $url = $_;
+             sub {
+                 my $delay = shift;
+                 my $end = $delay->begin;
+                 $ua->get($url => sub {
+                    $callback->($_[1]->res) if $callback;
+                    $end->();
+                  });
+             }
+    } @urls;
+
     Mojo::IOLoop->delay(@steps)->wait;
 }
 
@@ -75,23 +79,19 @@ sub __construct_publish_urls {
     $channel or croak "channel is required.";
     $params{messages} or croak "messages is required.";
 
-    my @urls;
-    foreach my $message (@{$params{messages}}) {
-        $message = { message => $message } unless ref($message) eq 'HASH';
-        croak 'message is required in params *messages*' unless defined $message->{message};
-        my $msg = $message->{message};
-        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/"$msg"~ );
-        my %query;
-        foreach my $k ('ortt', 'meta', 'ear', 'seqn') {
-            my $v = $message->{$k} // $params{$k};
-            next unless defined $v;
-            $query{$k} = ref($v) ? encode_json($v) : $v;
-        }
-        $uri->query(\%query) if %query;
-        push @urls, $uri->to_string;
-    }
+    return map {
+        my $json = $_->json;
+        my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . url_escape($json) );
+        $uri->query($_->query_params(\%params));
+        $uri->to_string;
+    } map { # backwards compatibility
+        ref $_ ? PubNub::PubSub::Message->new($_) : message($_);
+    } @{$params{messages}};
+}
 
-    return @urls;
+sub message {
+    my $message = pop; # safe for -> method calls
+    return PubNub::PubSub::Message->new(payload => $message);
 }
 
 sub subscribe {
@@ -383,6 +383,16 @@ for example, to fetch all the rows in history
             start => $history->[2]
         });
     }
+
+=head1 JSON USAGE
+
+This module effectively runs a Mojolicious application in the background.  For
+those parts of JSON which do not have a hard Perl equivalent, such as booleans,
+the Mojo::JSON module's semantics work.  This means that JSON bools are 
+handled as references to scalar values 0 and 1 (i.e. \0 for false and \1 for 
+true).
+
+This has changed since 0.08, where True and False were used.
 
 =head1 GITHUB
 
