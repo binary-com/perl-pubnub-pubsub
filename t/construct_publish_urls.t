@@ -48,7 +48,7 @@ is $urls[1], 'http://pubsub.pubnub.com/publish/demo/demo/0/sandbox/0/%22message2
 is scalar(@urls), 2;
 my $uri = Mojo::URL->new($urls[0]);
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test1%22';
-is $uri->query->param('ear'), 'True';
+is $uri->query->param('ear'), '"True"';
 is $uri->query->param('seqn'), '12345';
 is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
 is_deeply decode_json($uri->query->param('ortt')), {
@@ -57,7 +57,7 @@ is_deeply decode_json($uri->query->param('ortt')), {
 };
 $uri = Mojo::URL->new($urls[1]);
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test2%22';
-is $uri->query->param('ear'), 'True';
+is $uri->query->param('ear'), '"True"';
 is $uri->query->param('seqn'), '12346';
 is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
 is_deeply decode_json($uri->query->param('ortt')), {
@@ -93,7 +93,7 @@ is_deeply decode_json($uri->query->param('ortt')), {
 is scalar(@urls), 2;
 $uri = Mojo::URL->new($urls[0]);
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test3%22';
-is $uri->query->param('ear'), 'True';
+is $uri->query->param('ear'), '"True"';
 is $uri->query->param('seqn'), '12345';
 is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
 is_deeply decode_json($uri->query->param('ortt')), {
@@ -102,7 +102,7 @@ is_deeply decode_json($uri->query->param('ortt')), {
 };
 $uri = Mojo::URL->new($urls[1]);
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test4%22';
-is $uri->query->param('ear'), 'False';
+is $uri->query->param('ear'), '"False"';
 is $uri->query->param('seqn'), '12347';
 is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
 is_deeply decode_json($uri->query->param('ortt')), {
