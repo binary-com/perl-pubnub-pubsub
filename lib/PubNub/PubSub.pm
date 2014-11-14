@@ -7,7 +7,6 @@ our $VERSION = '0.09';
 use Carp;
 use Mojo::JSON qw/encode_json/;
 use Mojo::UserAgent;
-use Mojo::URL;
 use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
@@ -49,21 +48,20 @@ sub publish {
     my %params = @_ % 2 ? %{$_[0]} : @_;
     my $callback = $params{callback} || $self->{publish_callback};
 
-    my @urls = $self->__construct_publish_urls(%params);
-
     my $ua = $self->__ua;
 
     my @steps = map {
-             my $url = $_;
+             my $ref = $_;
+             my $url = $ref->{url};
              sub {
                  my $delay = shift;
                  my $end = $delay->begin;
                  $ua->get($url => sub {
-                    $callback->($_[1]->res) if $callback;
+                    $callback->($_[1]->res, $ref->{message}) if $callback;
                     $end->();
                   });
              }
-    } @urls;
+    } $self->__construct_publish_urls(%params);
 
     Mojo::IOLoop->delay(@steps)->wait;
 }
@@ -83,10 +81,8 @@ sub __construct_publish_urls {
         my $json = $_->json;
         my $uri = Mojo::URL->new( $self->{web_host} . qq~/publish/$pub_key/$sub_key/0/$channel/0/~ . url_escape($json) );
         $uri->query($_->query_params(\%params));
-        $uri->to_string;
-    } map { # backwards compatibility
-        ref $_ ? PubNub::PubSub::Message->new($_) : message($_);
-    } @{$params{messages}};
+        { url => $uri->to_string, message => $_ };
+    } map { PubNub::PubSub::Message->new($_) } @{$params{messages}};
 }
 
 sub message {
