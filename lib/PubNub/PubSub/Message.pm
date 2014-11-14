@@ -35,6 +35,7 @@ to JSON in the query_params method below.
 
 sub new {
     my $pkg  = shift;
+    unshift @_, 'payload' if scalar @_ == 1 and !ref $_[0];
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
     $args{payload} ||= $args{message}; # backwards compatibility
     croak 'Must provide payload' unless $args{payload};
