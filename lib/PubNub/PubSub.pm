@@ -85,11 +85,6 @@ sub __construct_publish_urls {
     } map { PubNub::PubSub::Message->new($_) } @{$params{messages}};
 }
 
-sub message {
-    my $message = pop; # safe for -> method calls
-    return PubNub::PubSub::Message->new(payload => $message);
-}
-
 sub subscribe {
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
