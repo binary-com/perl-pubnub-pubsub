@@ -31,6 +31,9 @@ is effectively an alias for payload.  Other arguments include ortt, meta, ear,
 and seqn, supported per the PubNub API.  These other arguments are converted
 to JSON in the query_params method below.
 
+If a simple scalar is passed (not a reference), it is assumed that this will
+be passed to PubNub as a string literal and handled appropriately.
+
 =cut
 
 sub new {
