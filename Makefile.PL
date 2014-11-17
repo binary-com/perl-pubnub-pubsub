@@ -12,6 +12,7 @@ use ExtUtils::MakeMaker ;
 my %WriteMakefileArgs = (
   "ABSTRACT" => "Perl library for rapid publishing of messages on PubNub.com",
   "AUTHOR" => "Binary.com <fayland\@gmail.com>",
+  VERSION_FROM     => 'lib/PubNub/PubSub.pm',
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
   },
@@ -25,7 +26,6 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => "0.96"
   },
-  "VERSION" => "0.09",
   "test" => {
     "TESTS" => "t/*.t"
   }
