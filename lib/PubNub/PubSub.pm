@@ -147,6 +147,8 @@ PubNub::PubSub - Perl library for rapid publishing of messages on PubNub.com
 =head1 SYNOPSIS
 
     use PubNub::PubSub;
+    use 5.010;
+    use Data::Dumper;
 
     my $pubnub = PubNub::PubSub->new(
         pub_key => 'demo', # only required for publish
