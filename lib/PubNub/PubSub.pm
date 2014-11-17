@@ -102,6 +102,10 @@ sub subscribe {
     my $tx = $ua->get($self->{web_host} . "/subscribe/$sub_key/$channel/0/$timetoken");
     unless ($tx->success) {
         # for example $tx->error->{message} =~ /Inactivity timeout/
+
+        # This is not a traditional goto. Instead it exits this function 
+        # and re-enters with @ as params.
+        #
         # see goto docs, this is basically a method call which exits the current
         # function first.  So no extra call stack depth.
         @_ = ($self, %params, timetoken => $timetoken);
