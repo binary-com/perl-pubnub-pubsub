@@ -102,7 +102,10 @@ sub subscribe {
     my $tx = $ua->get($self->{web_host} . "/subscribe/$sub_key/$channel/0/$timetoken");
     unless ($tx->success) {
         # for example $tx->error->{message} =~ /Inactivity timeout/
-        return $self->subscribe(%params, timetoken => $timetoken);
+        # see goto docs, this is basically a method call which exits the current
+        # function first.  So no extra call stack depth.
+        @_ = ($self, %params, timetoken => $timetoken);
+        goto &subscribe;
     }
     my $json = $tx->res->json;
 
