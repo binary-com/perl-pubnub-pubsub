@@ -94,6 +94,10 @@ sub subscribe {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
+    # Converting channel to scalar list if an array ref
+
+    $channel = join ',', @$channel if ref $channel =~ /ARRAY/;
+
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
 
@@ -108,6 +112,7 @@ sub subscribe {
         #
         # see goto docs, this is basically a method call which exits the current
         # function first.  So no extra call stack depth.
+        sleep 1;
         @_ = ($self, %params, timetoken => $timetoken);
         goto &subscribe;
     }
