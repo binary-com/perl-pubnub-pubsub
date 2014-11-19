@@ -339,6 +339,9 @@ table with one entry per channel.
 If a dispatch table is used a _default entry catches all unrecognized channels. 
 If an unrecognized channel is found, a warning is generated and the loop exits.
 
+The message results are passed into the functions in raw_msg form (i.e. a tuple 
+ref of (\@messages, $timetoken, $channel) for performance reasons.
+
 =back
 
 =head2 publish
