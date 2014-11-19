@@ -94,10 +94,6 @@ sub subscribe {
     my $channel = $params{channel} || $self->{channel};
     $channel or croak "channel is required.";
 
-    # Converting channel to scalar list if an array ref
-
-    $channel = join ',', @$channel if ref $channel =~ /ARRAY/;
-
     my $callback = $params{callback} or croak "callback is required.";
     my $timetoken = $params{timetoken} || '0';
 
@@ -123,6 +119,45 @@ sub subscribe {
 
     $timetoken = $json->[1];
     return $self->subscribe(%params, timetoken => $timetoken);
+}
+
+sub subscribe_multi {
+    my $self = shift;
+    my %params = @_ % 2 ? %{$_[0]} : @_;
+    croak 'channels must be an arrayref' 
+         unless ref $params{channels} =~ /ARRAY/;
+    croak 'callback must be a hashref or coderef'
+         unless ref $params{callback} =~ /(HASH|CODE)/;
+
+    my $callback;
+    if (ref $params{callback} =~ /HASH/){
+       for (keys %{$params{callback}}) {
+           croak "Non-coderef value found for callback key $_" 
+                unless ref $$params{callback}->{$_} =~ /CODE/;
+       }
+       $callback = sub {
+           my ($obj) = @_;
+           my $cb_dispatch = $params{callback};
+           if (exists $cb_dispatch->{$obj->{channel}}){
+
+              # these are verified coderefs, so replacing the current stack 
+              # frame with a call to the function.  They will *not* jump to 
+              # a label or other points.  Basically this just lets us pretend
+              # that this was called directly by subscribe above.
+              goto $cb_dispatch->{$obj->{channel}};
+           } elsif (exists $cb_dispatch->{'_default'}){
+              goto $cb_dispatch->{_default};
+           } else {
+              warn 'Using callback dispatch table, cannot find channel callback'
+                   . ' and _default callback not specified';
+              return;
+           }
+       };
+    }
+    $callback ||= $params->{callback};
+
+    my $channel_string = join ',', @{$params->{channels}};
+    return $self->subscribe(channel => $channel_string, callback => $callback);
 }
 
 sub history {
@@ -255,6 +290,26 @@ subscribe channel to listen for the messages.
     });
 
 return 0 to stop
+
+=head2 subscribe_multi
+
+Subscribe to multiple channels.  Arguments are:
+
+=over
+
+=item channels
+
+an arrayref of channel names
+
+=item callback
+
+A callback, either a coderef which handles all requests, or a hashref dispatch
+table with one entry per channel.
+
+If a dispatch table is used a _default entry catches all unrecognized channels. 
+If an unrecognized channel is found, a warning is generated and the loop exits.
+
+=back
 
 =head2 publish
 
