@@ -113,8 +113,9 @@ sub subscribe {
         goto &subscribe;
     }
     my $json = $tx->res->json;
+    my @cb_args = $params{raw_msg}? ($json) : (@{$json->[0]});
 
-    my $rtn = $callback ? $callback->(@{ $json->[0] }) : 1;
+    my $rtn = $callback ? $callback->(@cb_args) : 1;
     return unless $rtn;
 
     $timetoken = $json->[1];
@@ -124,27 +125,33 @@ sub subscribe {
 sub subscribe_multi {
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
-    croak 'channels must be an arrayref' 
-         unless ref $params{channels} =~ /ARRAY/;
+    croak 'channels must be an arrayref'
+         unless ref($params{channels}) =~ /ARRAY/;
     croak 'callback must be a hashref or coderef'
-         unless ref $params{callback} =~ /(HASH|CODE)/;
+         unless ref($params{callback}) =~ /(HASH|CODE)/;
 
     my $callback;
-    if (ref $params{callback} =~ /HASH/){
+    if (ref($params{callback}) =~ /HASH/){
        for (keys %{$params{callback}}) {
            croak "Non-coderef value found for callback key $_" 
-                unless ref $params{callback}->{$_} =~ /CODE/;
+                unless ref($params{callback}->{$_}) =~ /CODE/;
        }
        $callback = sub {
            my ($obj) = @_;
+           my ($msg, $timetoken, $channel) = @$obj;
            my $cb_dispatch = $params{callback};
-           if (exists $cb_dispatch->{$obj->{channel}}){
+           unless ($channel) { # on connect messages
+              goto $cb_dispatch->{on_connect} 
+                   if exists $cb_dispatch->{on_connect};
+              return 1;
+           }
+           if (exists $cb_dispatch->{$channel}){
 
               # these are verified coderefs, so replacing the current stack 
               # frame with a call to the function.  They will *not* jump to 
               # a label or other points.  Basically this just lets us pretend
               # that this was called directly by subscribe above.
-              goto $cb_dispatch->{$obj->{channel}};
+              goto $cb_dispatch->{$channel};
            } elsif (exists $cb_dispatch->{'_default'}){
               goto $cb_dispatch->{_default};
            } else {
@@ -154,10 +161,11 @@ sub subscribe_multi {
            }
        };
     }
-    $callback ||= $params{callback};
+    $callback = $params{callback} unless ref $callback;
 
     my $channel_string = join ',', @{$params{channels}};
-    return $self->subscribe(channel => $channel_string, callback => $callback);
+    return $self->subscribe(channel => $channel_string, callback => $callback,
+                           raw_msg => 1);
 }
 
 sub history {
@@ -278,6 +286,28 @@ set ENV MOJO_USERAGENT_DEBUG to debug
 =head2 subscribe
 
 subscribe channel to listen for the messages.
+
+Arguments are:
+
+=over
+
+=item callback
+
+Callback to run on the channel
+
+=item channel
+
+Channel to listen on
+
+=item raw_msg
+
+Pass the whole message in, as opposed to the json element of the payload.
+
+This is useful when you need to process time tokens or channel names.
+
+The format is a triple of (\@messages, $timetoken, $channel).
+
+=back
 
     $pubnub->subscribe({
         callback => sub {
