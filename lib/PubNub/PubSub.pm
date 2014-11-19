@@ -133,7 +133,7 @@ sub subscribe_multi {
     if (ref $params{callback} =~ /HASH/){
        for (keys %{$params{callback}}) {
            croak "Non-coderef value found for callback key $_" 
-                unless ref $$params{callback}->{$_} =~ /CODE/;
+                unless ref $params{callback}->{$_} =~ /CODE/;
        }
        $callback = sub {
            my ($obj) = @_;
@@ -154,9 +154,9 @@ sub subscribe_multi {
            }
        };
     }
-    $callback ||= $params->{callback};
+    $callback ||= $params{callback};
 
-    my $channel_string = join ',', @{$params->{channels}};
+    my $channel_string = join ',', @{$params{channels}};
     return $self->subscribe(channel => $channel_string, callback => $callback);
 }
 
