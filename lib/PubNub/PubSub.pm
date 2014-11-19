@@ -297,7 +297,11 @@ Callback to run on the channel
 
 =item channel
 
-Channel to listen on
+Channel to listen on, defaults to the base object's channel attribute.
+
+=item subkey
+
+Subscription key.  Defaults to base object's subkey attribute.
 
 =item raw_msg
 
@@ -306,6 +310,10 @@ Pass the whole message in, as opposed to the json element of the payload.
 This is useful when you need to process time tokens or channel names.
 
 The format is a triple of (\@messages, $timetoken, $channel).
+
+=item timetoken
+
+Time token for initial request.  Defaults to 0.
 
 =back
 
