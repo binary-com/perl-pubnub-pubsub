@@ -42,7 +42,7 @@ be passed to PubNub as a string literal and handled appropriately.
 
 sub new { ## no critic (RequireArgUnpacking)
     my $pkg  = shift;
-    unshift @_, 'payload' if scalar @_ == 1 and !ref $_[0];
+    unshift @_, 'payload' if scalar @_ == 1 && !ref $_[0];
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
     $args{payload} ||= $args{message}; # backwards compatibility
     croak 'Must provide payload' unless $args{payload};
