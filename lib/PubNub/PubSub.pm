@@ -1,8 +1,8 @@
 package PubNub::PubSub;
 
 use strict;
+use warnings;
 use v5.10;
-our $VERSION = '1.0.0';
 
 use Carp;
 use Mojo::JSON qw/encode_json/;
@@ -10,6 +10,8 @@ use Mojo::UserAgent;
 use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
+
+our $VERSION = '1.0.0';
 
 sub new {
     my $class = shift;
