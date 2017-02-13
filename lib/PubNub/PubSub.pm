@@ -13,7 +13,7 @@ use PubNub::PubSub::Message;
 
 our $VERSION = '1.0.0';
 
-sub new { ## no critic (RequiredArgUnpacking)
+sub new { ## no critic (RequireArgUnpacking)
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
@@ -44,7 +44,7 @@ sub __ua {
     return $ua;
 }
 
-sub publish { ## no critic (RequiredArgUnpacking)
+sub publish { ## no critic (RequireArgUnpacking)
     my $self = shift;
 
     my %params = @_ % 2 ? %{$_[0]} : @_;
@@ -87,7 +87,7 @@ sub __construct_publish_urls {
     } map { PubNub::PubSub::Message->new($_) } @{$params{messages}};
 }
 
-sub subscribe { ## no critic (RequiredArgUnpacking)
+sub subscribe { ## no critic (RequireArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
@@ -124,7 +124,7 @@ sub subscribe { ## no critic (RequiredArgUnpacking)
     return $self->subscribe(%params, timetoken => $timetoken);
 }
 
-sub subscribe_multi { ## no critic (RequiredArgUnpacking)
+sub subscribe_multi { ## no critic (RequireArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
     croak 'channels must be an arrayref'
@@ -170,7 +170,7 @@ sub subscribe_multi { ## no critic (RequiredArgUnpacking)
                            raw_msg => 1);
 }
 
-sub history { ## no critic (RequiredArgUnpacking)
+sub history { ## no critic (RequireArgUnpacking)
     my $self = shift;
 
     if (scalar(@_) == 1 and ref($_[0]) ne 'HASH' and $_[0] =~ /^\d+$/) {
