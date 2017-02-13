@@ -19,6 +19,7 @@ not intended to be used directly for users.  This being said, one can use it
 if you want to do your own URL management or otherwise interface with PubNub in
 ways this distribution does not yet support.
 
+ my $datastructure;
  my $message = PubNub::PubSub::Message->new(payload=> $datastructure);
  my $json = $message->json;
  my $payload = $message->payload;
