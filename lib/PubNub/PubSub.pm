@@ -13,7 +13,7 @@ use PubNub::PubSub::Message;
 
 our $VERSION = '1.0.0';
 
-sub new {
+sub new { ## no critic (RequiredArgUnpacking)
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
@@ -44,7 +44,7 @@ sub __ua {
     return $ua;
 }
 
-sub publish {
+sub publish { ## no critic (RequiredArgUnpacking)
     my $self = shift;
 
     my %params = @_ % 2 ? %{$_[0]} : @_;
@@ -65,7 +65,7 @@ sub publish {
              }
     } $self->__construct_publish_urls(%params);
 
-    Mojo::IOLoop->delay(@steps)->wait;
+    return Mojo::IOLoop->delay(@steps)->wait;
 }
 
 sub __construct_publish_urls {
@@ -87,7 +87,7 @@ sub __construct_publish_urls {
     } map { PubNub::PubSub::Message->new($_) } @{$params{messages}};
 }
 
-sub subscribe {
+sub subscribe { ## no critic (RequiredArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
@@ -124,7 +124,7 @@ sub subscribe {
     return $self->subscribe(%params, timetoken => $timetoken);
 }
 
-sub subscribe_multi {
+sub subscribe_multi { ## no critic (RequiredArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
     croak 'channels must be an arrayref'
@@ -170,7 +170,7 @@ sub subscribe_multi {
                            raw_msg => 1);
 }
 
-sub history {
+sub history { ## no critic (RequiredArgUnpacking)
     my $self = shift;
 
     if (scalar(@_) == 1 and ref($_[0]) ne 'HASH' and $_[0] =~ /^\d+$/) {
@@ -346,10 +346,10 @@ an arrayref of channel names
 A callback, either a coderef which handles all requests, or a hashref dispatch
 table with one entry per channel.
 
-If a dispatch table is used a _default entry catches all unrecognized channels. 
+If a dispatch table is used a _default entry catches all unrecognized channels.
 If an unrecognized channel is found, a warning is generated and the loop exits.
 
-The message results are passed into the functions in raw_msg form (i.e. a tuple 
+The message results are passed into the functions in raw_msg form (i.e. a tuple
 ref of (\@messages, $timetoken, $channel) for performance reasons.
 
 =back

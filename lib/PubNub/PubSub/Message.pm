@@ -16,7 +16,7 @@ PubNub::PubSub::Message - Message object for PubNub::PubSub
 
 This module is primarily used behind the scenes in PubNub::PubSub.  It is
 not intended to be used directly for users.  This being said, one can use it
-if you want to do your own URL management or otherwise interface with PubNub in 
+if you want to do your own URL management or otherwise interface with PubNub in
 ways this distribution does not yet support.
 
  my $message = PubNub::PubSub::Message->new(payload=> $datastructure);
@@ -39,7 +39,7 @@ be passed to PubNub as a string literal and handled appropriately.
 =cut
 
 
-sub new {
+sub new { ## no critic (RequiredArgUnpacking)
     my $pkg  = shift;
     unshift @_, 'payload' if scalar @_ == 1 and !ref $_[0];
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
