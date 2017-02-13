@@ -140,10 +140,10 @@ sub subscribe_multi { ## no critic (RequireArgUnpacking)
        }
        $callback = sub {
            my ($obj) = @_;
-           my ($msg, $timetoken, $channel) = @$obj;
+           my (undef, undef, $channel) = @$obj;
            my $cb_dispatch = $params{callback};
            unless ($channel) { # on connect messages
-              goto $cb_dispatch->{on_connect} 
+              goto $cb_dispatch->{on_connect}
                    if exists $cb_dispatch->{on_connect};
               return 1;
            }
