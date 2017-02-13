@@ -1,6 +1,9 @@
 Revision history for PubNub-PubSub
 
 {{$NEXT}}
+  switch to dzil
+  
+1.0.0
 
 0.08  2014-11-01 12:18:59 CST
         - add new params for Publish V2

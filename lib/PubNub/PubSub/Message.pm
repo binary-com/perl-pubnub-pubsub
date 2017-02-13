@@ -6,6 +6,8 @@ use Mojo::JSON qw(encode_json decode_json);
 use strict;
 use warnings;
 
+## VERSION
+
 =head1 NAME
 
 PubNub::PubSub::Message - Message object for PubNub::PubSub
@@ -35,6 +37,7 @@ If a simple scalar is passed (not a reference), it is assumed that this will
 be passed to PubNub as a string literal and handled appropriately.
 
 =cut
+
 
 sub new {
     my $pkg  = shift;
@@ -98,12 +101,5 @@ sub query_params {
             ();
     } qw(ortt meta ear seqn) };
 }
-
-=head2 LICENSE
-
-The copyright and license terms of this module are the same as those of the 
-PubNub::PubSub module with which it is distributed.
-
-=cut
 
 1;
