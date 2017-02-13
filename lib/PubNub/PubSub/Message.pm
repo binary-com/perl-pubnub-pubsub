@@ -28,7 +28,7 @@ ways this distribution does not yet support.
 
 =head2 new
 
-THis is the basic constructor.  Requires message or payload argument.  Message 
+THis is the basic constructor.  Requires message or payload argument.  Message
 is effectively an alias for payload.  Other arguments include ortt, meta, ear,
 and seqn, supported per the PubNub API.  These other arguments are converted
 to JSON in the query_params method below.
@@ -39,7 +39,7 @@ be passed to PubNub as a string literal and handled appropriately.
 =cut
 
 
-sub new { ## no critic (RequiredArgUnpacking)
+sub new { ## no critic (RequireArgUnpacking)
     my $pkg  = shift;
     unshift @_, 'payload' if scalar @_ == 1 and !ref $_[0];
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
