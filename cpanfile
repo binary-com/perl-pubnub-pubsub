@@ -13,6 +13,5 @@ on test => sub {
 };
 
 on develop => sub {
-    requires 'Dist::Milla', 'v1.0.8';
     requires 'Test::Pod', '1.41';
 };
