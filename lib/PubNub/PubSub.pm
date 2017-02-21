@@ -11,7 +11,7 @@ use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
 
-our $VERSION = '1.0.0';
+our $VERSION = '1.0.1';
 
 sub new { ## no critic (RequireArgUnpacking)
     my $class = shift;
