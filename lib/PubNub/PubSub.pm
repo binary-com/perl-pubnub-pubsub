@@ -1,8 +1,8 @@
 package PubNub::PubSub;
 
 use strict;
+use warnings;
 use v5.10;
-our $VERSION = '1.0.0';
 
 use Carp;
 use Mojo::JSON qw/encode_json/;
@@ -11,7 +11,9 @@ use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
 
-sub new {
+our $VERSION = '1.0.1';
+
+sub new { ## no critic (RequireArgUnpacking)
     my $class = shift;
     my %args  = @_ % 2 ? %{$_[0]} : @_;
 
@@ -42,7 +44,7 @@ sub __ua {
     return $ua;
 }
 
-sub publish {
+sub publish { ## no critic (RequireArgUnpacking)
     my $self = shift;
 
     my %params = @_ % 2 ? %{$_[0]} : @_;
@@ -63,7 +65,7 @@ sub publish {
              }
     } $self->__construct_publish_urls(%params);
 
-    Mojo::IOLoop->delay(@steps)->wait;
+    return Mojo::IOLoop->delay(@steps)->wait;
 }
 
 sub __construct_publish_urls {
@@ -85,7 +87,7 @@ sub __construct_publish_urls {
     } map { PubNub::PubSub::Message->new($_) } @{$params{messages}};
 }
 
-sub subscribe {
+sub subscribe { ## no critic (RequireArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
 
@@ -122,7 +124,7 @@ sub subscribe {
     return $self->subscribe(%params, timetoken => $timetoken);
 }
 
-sub subscribe_multi {
+sub subscribe_multi { ## no critic (RequireArgUnpacking)
     my $self = shift;
     my %params = @_ % 2 ? %{$_[0]} : @_;
     croak 'channels must be an arrayref'
@@ -138,10 +140,10 @@ sub subscribe_multi {
        }
        $callback = sub {
            my ($obj) = @_;
-           my ($msg, $timetoken, $channel) = @$obj;
+           my (undef, undef, $channel) = @$obj;
            my $cb_dispatch = $params{callback};
            unless ($channel) { # on connect messages
-              goto $cb_dispatch->{on_connect} 
+              goto $cb_dispatch->{on_connect}
                    if exists $cb_dispatch->{on_connect};
               return 1;
            }
@@ -168,7 +170,7 @@ sub subscribe_multi {
                            raw_msg => 1);
 }
 
-sub history {
+sub history { ## no critic (RequireArgUnpacking)
     my $self = shift;
 
     if (scalar(@_) == 1 and ref($_[0]) ne 'HASH' and $_[0] =~ /^\d+$/) {
@@ -344,10 +346,10 @@ an arrayref of channel names
 A callback, either a coderef which handles all requests, or a hashref dispatch
 table with one entry per channel.
 
-If a dispatch table is used a _default entry catches all unrecognized channels. 
+If a dispatch table is used a _default entry catches all unrecognized channels.
 If an unrecognized channel is found, a warning is generated and the loop exits.
 
-The message results are passed into the functions in raw_msg form (i.e. a tuple 
+The message results are passed into the functions in raw_msg form (i.e. a tuple
 ref of (\@messages, $timetoken, $channel) for performance reasons.
 
 =back
@@ -489,8 +491,8 @@ for example, to fetch all the rows in history
 
 This module effectively runs a Mojolicious application in the background.  For
 those parts of JSON which do not have a hard Perl equivalent, such as booleans,
-the Mojo::JSON module's semantics work.  This means that JSON bools are 
-handled as references to scalar values 0 and 1 (i.e. \0 for false and \1 for 
+the Mojo::JSON module's semantics work.  This means that JSON bools are
+handled as references to scalar values 0 and 1 (i.e. \0 for false and \1 for
 true).
 
 This has changed since 0.08, where True and False were used.
@@ -502,45 +504,5 @@ L<https://github.com/binary-com/perl-pubnub-pubsub>
 =head1 AUTHOR
 
 Binary.com E<lt>fayland@gmail.comE<gt>
-
-=head1 LICENSE AND COPYRIGHT
-
-Copyright 2014- binary.com.
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of the the Artistic License (2.0). You may obtain a
-copy of the full license at:
-
-L<http://www.perlfoundation.org/artistic_license_2_0>
-
-Any use, modification, and distribution of the Standard or Modified
-Versions is governed by this Artistic License. By using, modifying or
-distributing the Package, you accept this license. Do not use, modify,
-or distribute the Package, if you do not accept this license.
-
-If your Modified Version has been derived from a Modified Version made
-by someone other than you, you are nevertheless required to ensure that
-your Modified Version complies with the requirements of this license.
-
-This license does not grant you the right to use any trademark, service
-mark, tradename, or logo of the Copyright Holder.
-
-This license includes the non-exclusive, worldwide, free-of-charge
-patent license to make, have made, use, offer to sell, sell, import and
-otherwise transfer the Package with respect to any patent claims
-licensable by the Copyright Holder that are necessarily infringed by the
-Package. If you institute patent litigation (including a cross-claim or
-counterclaim) against any party alleging that the Package constitutes
-direct or contributory patent infringement, then this Artistic License
-to you shall terminate on the date that such litigation is filed.
-
-Disclaimer of Warranty: THE PACKAGE IS PROVIDED BY THE COPYRIGHT HOLDER
-AND CONTRIBUTORS "AS IS' AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
-THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, OR NON-INFRINGEMENT ARE DISCLAIMED TO THE EXTENT PERMITTED BY
-YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
-CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
-CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =cut

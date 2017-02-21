@@ -6,6 +6,8 @@ use Mojo::JSON qw(encode_json decode_json);
 use strict;
 use warnings;
 
+## VERSION
+
 =head1 NAME
 
 PubNub::PubSub::Message - Message object for PubNub::PubSub
@@ -14,9 +16,10 @@ PubNub::PubSub::Message - Message object for PubNub::PubSub
 
 This module is primarily used behind the scenes in PubNub::PubSub.  It is
 not intended to be used directly for users.  This being said, one can use it
-if you want to do your own URL management or otherwise interface with PubNub in 
+if you want to do your own URL management or otherwise interface with PubNub in
 ways this distribution does not yet support.
 
+ my $datastructure;
  my $message = PubNub::PubSub::Message->new(payload=> $datastructure);
  my $json = $message->json;
  my $payload = $message->payload;
@@ -26,7 +29,7 @@ ways this distribution does not yet support.
 
 =head2 new
 
-THis is the basic constructor.  Requires message or payload argument.  Message 
+THis is the basic constructor.  Requires message or payload argument.  Message
 is effectively an alias for payload.  Other arguments include ortt, meta, ear,
 and seqn, supported per the PubNub API.  These other arguments are converted
 to JSON in the query_params method below.
@@ -36,9 +39,10 @@ be passed to PubNub as a string literal and handled appropriately.
 
 =cut
 
-sub new {
+
+sub new { ## no critic (RequireArgUnpacking)
     my $pkg  = shift;
-    unshift @_, 'payload' if scalar @_ == 1 and !ref $_[0];
+    unshift @_, 'payload' if scalar @_ == 1 && !ref $_[0];
     my %args = scalar @_ % 2 ? %{$_[0]} : @_;
     $args{payload} ||= $args{message}; # backwards compatibility
     croak 'Must provide payload' unless $args{payload};
@@ -98,12 +102,5 @@ sub query_params {
             ();
     } qw(ortt meta ear seqn) };
 }
-
-=head2 LICENSE
-
-The copyright and license terms of this module are the same as those of the 
-PubNub::PubSub module with which it is distributed.
-
-=cut
 
 1;
