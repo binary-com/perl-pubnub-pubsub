@@ -67,7 +67,7 @@ sub payload {
 Returns a message object with a payload from a json string.
 
 =cut
-my $json = JSON::MaybeXS->new;
+my $json = JSON::MaybeXS->new->allow_nonref(1);
 sub from_msg {
     my ($self, $json) = @_;
     my $arrayref = $json->decode(Encode::decode_utf8($json));
