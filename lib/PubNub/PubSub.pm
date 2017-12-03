@@ -5,7 +5,6 @@ use warnings;
 use v5.10;
 
 use Carp;
-use Mojo::JSON qw/encode_json/;
 use Mojo::UserAgent;
 use Mojo::Util qw/url_escape/;
 

@@ -1,7 +1,8 @@
 package PubNub::PubSub::Message;
 
 use Carp;
-use Mojo::JSON qw(encode_json decode_json);
+use Encode;
+use JSON::MaybeXS;
 
 use strict;
 use warnings;
@@ -66,10 +67,10 @@ sub payload {
 Returns a message object with a payload from a json string.
 
 =cut
-
+my $json = JSON::MaybeXS->new;
 sub from_msg {
     my ($self, $json) = @_;
-    my $arrayref = decode_json($json);
+    my $arrayref = $json->decode(Encode::decode_utf8($json));
     return "$self"->new(payload => $arrayref->[0], timestamp => $arrayref->[1]);
 }
 
@@ -81,7 +82,7 @@ Returns the payload encoded in json via Mojo::JSON
 
 sub json {
     my $self = shift;
-    return encode_json($self->{payload});
+    return Encode::encode_utf8($json->encode($self->{payload}));
 }
 
 =head2 query_params($mergehash)
@@ -98,7 +99,7 @@ sub query_params {
         my $var = $self->{$_};
         $var = $merge->{$_} unless defined $var;
         defined $var ?
-            ($_ => encode_json($var)) :
+            ($_ => Encode::encode_utf8($json->encode($var))) :
             ();
     } qw(ortt meta ear seqn) };
 }
