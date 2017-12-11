@@ -76,7 +76,7 @@ sub from_msg {
 
 =head2 json
 
-Returns the payload encoded in json via Mojo::JSON
+Returns the payload encoded in json
 
 =cut
 
