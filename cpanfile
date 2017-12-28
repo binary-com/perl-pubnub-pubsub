@@ -1,4 +1,5 @@
 requires 'Mojolicious', '5.40';
+requires 'JSON::MaybeXS';
 
 on configure => sub {
     requires 'ExtUtils::MakeMaker';

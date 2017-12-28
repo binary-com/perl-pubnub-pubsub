@@ -2,7 +2,8 @@ use strict;
 use Test::More;
 use PubNub::PubSub;
 use Mojo::URL;
-use Mojo::JSON qw/decode_json/;
+use Encode;
+use JSON::MaybeXS;
 
 my $pubnub = PubNub::PubSub->new(
     pub_key  => 'demo',
@@ -13,6 +14,7 @@ my $pubnub = PubNub::PubSub->new(
 my @urls = $pubnub->__construct_publish_urls(
     messages => ['message1', 'message2']
 );
+my $json = JSON::MaybeXS->new;
 is scalar(@urls), 2;
 is $urls[0]->{url}, 'http://pubsub.pubnub.com/publish/demo/demo/0/sandbox/0/%22message1%22';
 is $urls[1]->{url}, 'http://pubsub.pubnub.com/publish/demo/demo/0/sandbox/0/%22message2%22';
@@ -95,8 +97,8 @@ $uri = Mojo::URL->new($urls[0]->{url});
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test3%22';
 is $uri->query->param('ear'), '"True"';
 is $uri->query->param('seqn'), '12345';
-is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
-is_deeply decode_json($uri->query->param('ortt')), {
+is_deeply $json->decode($uri->query->param('meta')), { "stuff" => [] };
+is_deeply $json->decode($uri->query->param('ortt')), {
     "r" => 13,
     "t" => "13978641831137500"
 };
@@ -104,8 +106,8 @@ $uri = Mojo::URL->new($urls[1]->{url});
 is $uri->path, '/publish/demo/demo/0/sandbox/0/%22test4%22';
 is $uri->query->param('ear'), '"False"';
 is $uri->query->param('seqn'), '12347';
-is_deeply decode_json($uri->query->param('meta')), { "stuff" => [] };
-is_deeply decode_json($uri->query->param('ortt')), {
+is_deeply $json->decode($uri->query->param('meta')), { "stuff" => [] };
+is_deeply $json->decode($uri->query->param('ortt')), {
     "r" => 13,
     "t" => "13978641831137502"
 };
