@@ -120,7 +120,8 @@ sub subscribe { ## no critic (RequireArgUnpacking)
     return unless $rtn;
 
     $timetoken = $json->[1];
-    return $self->subscribe(%params, timetoken => $timetoken);
+    @_ = ($self, %params, timetoken => $timetoken);
+    goto &subscribe;
 }
 
 sub subscribe_multi { ## no critic (RequireArgUnpacking)
