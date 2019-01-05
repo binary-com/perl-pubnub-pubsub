@@ -2,8 +2,12 @@ Revision history for PubNub-PubSub
 
 {{$NEXT}}
 
-1.0.1     2017-02-20 06:36:08+00:00 UTC
-  switch to dzil
+1.0.2  2019-01-05 23:41:19+00:00 UTC
+       - use Mojo::UserAgent::CookieJar behavior from Mojolicious >= 6.20 and bump dependency
+       - add simple testcase for subscribe method
+
+1.0.1  2017-02-20 06:36:08+00:00 UTC
+       - switch to dzil
   
 1.0.0
 
