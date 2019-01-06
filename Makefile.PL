@@ -20,7 +20,7 @@ my %WriteMakefileArgs = (
   "MIN_PERL_VERSION" => "5.014000",
   "NAME" => "PubNub::PubSub",
   "PREREQ_PM" => {
-    "Mojolicious" => "5.40"
+    "Mojolicious" => "6.20"
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
@@ -42,7 +42,7 @@ my %FallbackPrereqs = (
   "File::Spec" => 0,
   "IO::Handle" => 0,
   "IPC::Open3" => 0,
-  "Mojolicious" => "5.40",
+  "Mojolicious" => "6.20",
   "Test::CheckDeps" => "0.010",
   "Test::More" => "0.96"
 );

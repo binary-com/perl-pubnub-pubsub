@@ -10,7 +10,7 @@ use Mojo::Util qw/url_escape/;
 
 use PubNub::PubSub::Message;
 
-our $VERSION = '1.0.1';
+our $VERSION = '1.0.2';
 
 sub new { ## no critic (RequireArgUnpacking)
     my $class = shift;
@@ -36,7 +36,7 @@ sub __ua {
     $ua->max_redirects(3);
     $ua->inactivity_timeout($self->{timeout});
     $ua->proxy->detect; # env proxy
-    $ua->cookie_jar(0);
+    $ua->cookie_jar->ignore(sub { 1 });
     $ua->max_connections(100);
     $self->{ua} = $ua;
 
